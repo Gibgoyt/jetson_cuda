@@ -28,75 +28,71 @@
 #include "commandLine.h"
 #include "captureWindow.h"
 
+	/*
+	 * Detection control widget
+	 */
+	class ControlDetectionWidget : public QWidget {
+		Q_OBJECT
 
-/*
- * Detection control widget
- */
-class ControlDetectionWidget : public QWidget
-{
-	Q_OBJECT
+	public:
+		// create window
+		ControlDetectionWidget(commandLine* cmdLine, CaptureWindow* captureWindow);
 
-public:
-	// create window
-	ControlDetectionWidget( commandLine* cmdLine, CaptureWindow* captureWindow );
+		// destructor
+		~ControlDetectionWidget();
 
-	// destructor
-	~ControlDetectionWidget();
+	public slots:
+		void onSave();
+		void onFreeze(bool toggled);
 
-public slots:
-	void onSave();
-	void onFreeze( bool toggled );
+		void onBoxRemove();
+		void onBoxClass(int value);
+		void onBoxCoord(double value);
+		void onQualityChanged(int value);
 
-	void onBoxRemove();
-	void onBoxClass( int value );
-	void onBoxCoord( double value );
-	void onQualityChanged( int value );
-	
-	void selectDatasetPath();
-	void selectLabelFile();
+		void selectDatasetPath();
+		void selectLabelFile();
 
-protected:	
-	bool saveFrame();
-	bool clearBoxes();
-	bool createDatasetDirectories();
-	bool makeDir( QDir& root, const QString& subdir );
-	bool addToImageSet( const std::string& imgSet, const std::string& imgName );
+	protected:
+		bool saveFrame();
+		bool clearBoxes();
+		bool createDatasetDirectories();
+		bool makeDir(QDir& root, const QString& subdir);
+		bool addToImageSet(const std::string& imgSet, const std::string& imgName);
 
-	void hideEvent( QHideEvent* event );
-	void showEvent( QShowEvent* event );
+		void hideEvent(QHideEvent* event);
+		void showEvent(QShowEvent* event);
 
-	void updateBoxColor( uint32_t index, uint32_t classID );
-	void updateBoxCoords( uint32_t index );
-	void updateBoxIndices();
+		void updateBoxColor(uint32_t index, uint32_t classID);
+		void updateBoxCoords(uint32_t index);
+		void updateBoxIndices();
 
-	static bool onCaptureEvent( uint16_t event, int a, int b, void* user );
-	static bool onWidgetEvent( glWidget* widget, uint16_t event, int a, int b, void* user );
+		static bool onCaptureEvent(uint16_t event, int a, int b, void* user);
+		static bool onWidgetEvent(glWidget* widget, uint16_t event, int a, int b, void* user);
 
-	CaptureWindow* captureWindow;
-	QStatusBar*    statusBar;
+		CaptureWindow* captureWindow;
+		QStatusBar* statusBar;
 
-	std::vector<std::string> classLabels;
+		std::vector<std::string> classLabels;
 
-	std::string labelPath;
-	QLabel*     labelWidget;
-	QComboBox*  setDropdown;
+		std::string labelPath;
+		QLabel* labelWidget;
+		QComboBox* setDropdown;
 
-	std::string datasetPath;
-	QLabel*     datasetWidget;	
+		std::string datasetPath;
+		QLabel* datasetWidget;
 
-	QLabel*     qualityLabel;
-	QSlider*    qualitySlider;
+		QLabel* qualityLabel;
+		QSlider* qualitySlider;
 
-	QCheckBox*  saveOnUnfreeze;
-	QCheckBox*  clearOnUnfreeze;
-	QCheckBox*  mergeDataSubsets;
+		QCheckBox* saveOnUnfreeze;
+		QCheckBox* clearOnUnfreeze;
+		QCheckBox* mergeDataSubsets;
 
-	QPushButton* freezeButton;
-	QPushButton* saveButton;
+		QPushButton* freezeButton;
+		QPushButton* saveButton;
 
-	QTableWidget* bboxTable;
-};
-
+		QTableWidget* bboxTable;
+	};
 
 #endif
-

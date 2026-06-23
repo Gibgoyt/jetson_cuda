@@ -27,20 +27,16 @@
 
 #include <signal.h>
 
-
 bool signal_recieved = false;
 
-void sig_handler(int signo)
-{
-	if( signo == SIGINT )
-	{
+void sig_handler(int signo) {
+	if (signo == SIGINT) {
 		printf("received SIGINT\n");
 		signal_recieved = true;
 	}
 }
 
-int usage()
-{
+int usage() {
 	printf("usage: camera-capture [-h] input_URI\n\n");
 	printf("GUI tool for collecting & labeling data from live camera feed\n\n");
 	printf("optional arguments:\n");
@@ -50,53 +46,45 @@ int usage()
 	return 0;
 }
 
-int main( int argc, char** argv )
-{
+int main(int argc, char** argv) {
 	/*
 	 * parse command line
 	 */
 	commandLine cmdLine(argc, argv);
 
-	if( cmdLine.GetFlag("help") )
+	if (cmdLine.GetFlag("help"))
 		return usage();
-
 
 	/*
 	 * attach signal handler
 	 */
-	if( signal(SIGINT, sig_handler) == SIG_ERR )
+	if (signal(SIGINT, sig_handler) == SIG_ERR)
 		printf("\ncan't catch SIGINT\n");
-
 
 	/*
 	 * create capture window
 	 */
 	CaptureWindow* captureWindow = CaptureWindow::Create(cmdLine);
 
-	if( !captureWindow )
-	{
+	if (!captureWindow) {
 		printf("camera-capture:  failed to open CaptureWindow\n");
 		return 0;
 	}
 
-	
 	/*
 	 * create control window
 	 */
 	ControlWindow* controlWindow = ControlWindow::Create(cmdLine, captureWindow);
 
-	if( !controlWindow )
-	{
+	if (!controlWindow) {
 		printf("camera-capture:  failed to open ControlWindow\n");
 		return 0;
 	}
 
-
 	/*
 	 * processing loop
 	 */
-	while( !signal_recieved )
-	{
+	while (!signal_recieved) {
 		// capture & render latest camera frame
 		captureWindow->Render();
 
@@ -104,23 +92,21 @@ int main( int argc, char** argv )
 		controlWindow->ProcessEvents();
 
 		// check if the user quit
-		if( captureWindow->IsClosed() || controlWindow->IsClosed() )
+		if (captureWindow->IsClosed() || controlWindow->IsClosed())
 			signal_recieved = true;
 	}
-	
 
 	/*
 	 * destroy resources
 	 */
 	printf("camera-capture:  shutting down...\n");
-	
-	if( controlWindow != NULL )
+
+	if (controlWindow != NULL)
 		delete controlWindow;
 
-	if( captureWindow != NULL )
+	if (captureWindow != NULL)
 		delete captureWindow;
 
 	printf("camera-capture:  shutdown complete.\n");
 	return 0;
 }
-

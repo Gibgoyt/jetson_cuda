@@ -25,25 +25,21 @@
 #include "controlClassify.h"
 #include "controlDetection.h"
 
-
 // constructor
-ControlWindow::ControlWindow( commandLine& commandLine, CaptureWindow* capture )
-{
+ControlWindow::ControlWindow(commandLine& commandLine, CaptureWindow* capture) {
 	captureWindow = capture;
-	cmdLine 	    = &commandLine;
+	cmdLine = &commandLine;
 
 	datasetTypes[0] = "Classification";
 	datasetTypes[1] = "Detection";
 
 	memset(datasetWidgets, 0, sizeof(datasetWidgets));
 
-
 	/*
 	 * create layout
- 	 */
+	 */
 	QVBoxLayout* layout = new QVBoxLayout();
 	layout->setAlignment(Qt::AlignTop);
-
 
 	/*
 	 * dataset type drop-down
@@ -51,7 +47,7 @@ ControlWindow::ControlWindow( commandLine& commandLine, CaptureWindow* capture )
 	QHBoxLayout* datasetLayout = new QHBoxLayout();
 	QComboBox* datasetDropdown = new QComboBox();
 
-	for( int n=0; n < numDatasetTypes; n++ )
+	for (int n = 0; n < numDatasetTypes; n++)
 		datasetDropdown->addItem(tr(datasetTypes[n]));
 
 	datasetDropdown->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
@@ -59,10 +55,14 @@ ControlWindow::ControlWindow( commandLine& commandLine, CaptureWindow* capture )
 	datasetLayout->addWidget(new QLabel(tr("  Dataset Type    ")));
 	datasetLayout->addWidget(datasetDropdown);
 
-	connect(datasetDropdown, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(onDatasetType(const QString&)));
+	connect(
+	    datasetDropdown,
+	    SIGNAL(currentIndexChanged(const QString&)),
+	    this,
+	    SLOT(onDatasetType(const QString&))
+	);
 
 	layout->addItem(datasetLayout);
-
 
 	/*
 	 * dataset control widgets
@@ -75,95 +75,73 @@ ControlWindow::ControlWindow( commandLine& commandLine, CaptureWindow* capture )
 
 	datasetWidgets[1]->hide();
 
-
 	/*
 	 * configure options
- 	 */
+	 */
 	setMinimumWidth(200);
 	setMaximumWidth(750);
 	setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding);
 	setLayout(layout);
 	setWindowTitle(tr("Data Capture Control"));
-	
 
 	// move the window away from the camera feed
 	move(capture->GetWindowWidth() + 75, 25 /*pos().y()*/);
 }
 
-
-void ControlWindow::onDatasetType(const QString& text)
-{
+void ControlWindow::onDatasetType(const QString& text) {
 	printf("camera-capture:  switching dataset type to '%s'\n", text.toUtf8().constData());
 
-	for( int n=0; n < numDatasetTypes; n++ )
-	{
-		if( text != datasetTypes[n] )
+	for (int n = 0; n < numDatasetTypes; n++) {
+		if (text != datasetTypes[n])
 			datasetWidgets[n]->hide();
 	}
 
-	for( int n=0; n < numDatasetTypes; n++ )
-	{
-		if( text == datasetTypes[n] )
+	for (int n = 0; n < numDatasetTypes; n++) {
+		if (text == datasetTypes[n])
 			datasetWidgets[n]->show();
 	}
 }
- 
 
 // sizeHint
-QSize ControlWindow::sizeHint() const
-{
-	return QSize(475,15);
+QSize ControlWindow::sizeHint() const {
+	return QSize(475, 15);
 }
-
 
 // destructor
-ControlWindow::~ControlWindow()
-{
-
-
-}
-
+ControlWindow::~ControlWindow() {}
 
 // ProcessEvents
-void ControlWindow::ProcessEvents()
-{
+void ControlWindow::ProcessEvents() {
 	QCoreApplication::processEvents();
 }
 
-
 // IsOpen
-bool ControlWindow::IsOpen() const
-{
+bool ControlWindow::IsOpen() const {
 	return isVisible();
 }
 
-
 // IsClosed
-bool ControlWindow::IsClosed() const
-{
+bool ControlWindow::IsClosed() const {
 	return !isVisible();
 }
 
-
 // https://github.com/Jorgen-VikingGod/Qt-Frameless-Window-DarkStyle
 class DarkStyle : public QProxyStyle {
- public:
-  DarkStyle();
-  explicit DarkStyle(QStyle *style);
+public:
+	DarkStyle();
+	explicit DarkStyle(QStyle* style);
 
-  QStyle *baseStyle() const;
+	QStyle* baseStyle() const;
 
-  void polish(QPalette &palette) override;
-  void polish(QApplication *app) override;
+	void polish(QPalette& palette) override;
+	void polish(QApplication* app) override;
 
- private:
-  QStyle *styleBase(QStyle *style = Q_NULLPTR) const;
+private:
+	QStyle* styleBase(QStyle* style = Q_NULLPTR) const;
 };
 
-
 // Create
-ControlWindow* ControlWindow::Create( commandLine& cmdLine, CaptureWindow* capture )
-{
+ControlWindow* ControlWindow::Create(commandLine& cmdLine, CaptureWindow* capture) {
 	// create QApplication
 	QApplication* app = new QApplication(cmdLine.argc, cmdLine.argv);
 
@@ -172,72 +150,68 @@ ControlWindow* ControlWindow::Create( commandLine& cmdLine, CaptureWindow* captu
 	// create ControlWindow
 	ControlWindow* window = new ControlWindow(cmdLine, capture);
 
-	if( !window )
+	if (!window)
 		return NULL;
 
 	window->show();
 	return window;
 }
 
-
 //-----------------------------------------------------------------------------------------
 DarkStyle::DarkStyle() : DarkStyle(styleBase()) {}
 
-DarkStyle::DarkStyle(QStyle *style) : QProxyStyle(style) {}
+DarkStyle::DarkStyle(QStyle* style) : QProxyStyle(style) {}
 
-QStyle *DarkStyle::styleBase(QStyle *style) const {
-  static QStyle *base =
-      !style ? QStyleFactory::create(QStringLiteral("Fusion")) : style;
-  return base;
+QStyle* DarkStyle::styleBase(QStyle* style) const {
+	static QStyle* base = !style ? QStyleFactory::create(QStringLiteral("Fusion")) : style;
+	return base;
 }
 
-QStyle *DarkStyle::baseStyle() const { return styleBase(); }
-
-void DarkStyle::polish(QPalette &palette) {
-  // modify palette to dark
-  palette.setColor(QPalette::Window, QColor(53, 53, 53));
-  palette.setColor(QPalette::WindowText, Qt::white);
-  palette.setColor(QPalette::Disabled, QPalette::WindowText,
-                   QColor(127, 127, 127));
-  palette.setColor(QPalette::Base, QColor(42, 42, 42));
-  palette.setColor(QPalette::AlternateBase, QColor(66, 66, 66));
-  palette.setColor(QPalette::ToolTipBase, Qt::white);
-  palette.setColor(QPalette::ToolTipText, QColor(53, 53, 53));
-  palette.setColor(QPalette::Text, Qt::white);
-  palette.setColor(QPalette::Disabled, QPalette::Text, QColor(127, 127, 127));
-  palette.setColor(QPalette::Dark, QColor(35, 35, 35));
-  palette.setColor(QPalette::Shadow, QColor(20, 20, 20));
-  palette.setColor(QPalette::Button, QColor(53, 53, 53));
-  palette.setColor(QPalette::ButtonText, Qt::white);
-  palette.setColor(QPalette::Disabled, QPalette::ButtonText,
-                   QColor(127, 127, 127));
-  palette.setColor(QPalette::BrightText, Qt::red);
-  palette.setColor(QPalette::Link, QColor(42, 130, 218));
-  palette.setColor(QPalette::Highlight, QColor(42, 130, 218));
-  palette.setColor(QPalette::Disabled, QPalette::Highlight, QColor(80, 80, 80));
-  palette.setColor(QPalette::HighlightedText, Qt::white);
-  palette.setColor(QPalette::Disabled, QPalette::HighlightedText,
-                   QColor(127, 127, 127));
+QStyle* DarkStyle::baseStyle() const {
+	return styleBase();
 }
 
-void DarkStyle::polish(QApplication *app) {
-  if (!app) return;
-
-  // increase font size for better reading,
-  // setPointSize was reduced from +2 because when applied this way in Qt5, the
-  // font is larger than intended for some reason
-  QFont defaultFont = QApplication::font();
-  defaultFont.setPointSize(defaultFont.pointSize() + 1);
-  app->setFont(defaultFont);
-
-  // loadstylesheet
-  QFile qfDarkstyle(QStringLiteral(":/darkstyle/darkstyle.qss"));
-  if (qfDarkstyle.open(QIODevice::ReadOnly | QIODevice::Text)) {
-    // set stylesheet
-    QString qsStylesheet = QString::fromLatin1(qfDarkstyle.readAll());
-    app->setStyleSheet(qsStylesheet);
-    qfDarkstyle.close();
-  }
+void DarkStyle::polish(QPalette& palette) {
+	// modify palette to dark
+	palette.setColor(QPalette::Window, QColor(53, 53, 53));
+	palette.setColor(QPalette::WindowText, Qt::white);
+	palette.setColor(QPalette::Disabled, QPalette::WindowText, QColor(127, 127, 127));
+	palette.setColor(QPalette::Base, QColor(42, 42, 42));
+	palette.setColor(QPalette::AlternateBase, QColor(66, 66, 66));
+	palette.setColor(QPalette::ToolTipBase, Qt::white);
+	palette.setColor(QPalette::ToolTipText, QColor(53, 53, 53));
+	palette.setColor(QPalette::Text, Qt::white);
+	palette.setColor(QPalette::Disabled, QPalette::Text, QColor(127, 127, 127));
+	palette.setColor(QPalette::Dark, QColor(35, 35, 35));
+	palette.setColor(QPalette::Shadow, QColor(20, 20, 20));
+	palette.setColor(QPalette::Button, QColor(53, 53, 53));
+	palette.setColor(QPalette::ButtonText, Qt::white);
+	palette.setColor(QPalette::Disabled, QPalette::ButtonText, QColor(127, 127, 127));
+	palette.setColor(QPalette::BrightText, Qt::red);
+	palette.setColor(QPalette::Link, QColor(42, 130, 218));
+	palette.setColor(QPalette::Highlight, QColor(42, 130, 218));
+	palette.setColor(QPalette::Disabled, QPalette::Highlight, QColor(80, 80, 80));
+	palette.setColor(QPalette::HighlightedText, Qt::white);
+	palette.setColor(QPalette::Disabled, QPalette::HighlightedText, QColor(127, 127, 127));
 }
 
+void DarkStyle::polish(QApplication* app) {
+	if (!app)
+		return;
 
+	// increase font size for better reading,
+	// setPointSize was reduced from +2 because when applied this way in Qt5, the
+	// font is larger than intended for some reason
+	QFont defaultFont = QApplication::font();
+	defaultFont.setPointSize(defaultFont.pointSize() + 1);
+	app->setFont(defaultFont);
+
+	// loadstylesheet
+	QFile qfDarkstyle(QStringLiteral(":/darkstyle/darkstyle.qss"));
+	if (qfDarkstyle.open(QIODevice::ReadOnly | QIODevice::Text)) {
+		// set stylesheet
+		QString qsStylesheet = QString::fromLatin1(qfDarkstyle.readAll());
+		app->setStyleSheet(qsStylesheet);
+		qfDarkstyle.close();
+	}
+}

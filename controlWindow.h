@@ -28,45 +28,41 @@
 #include "commandLine.h"
 #include "captureWindow.h"
 
+	/*
+	 * Capture control window
+	 */
+	class ControlWindow : public QWidget {
+		Q_OBJECT
 
-/*
- * Capture control window
- */
-class ControlWindow : public QWidget
-{
-	Q_OBJECT
+	public:
+		// create window
+		static ControlWindow* Create(commandLine& cmdLine, CaptureWindow* captureWindow);
 
-public:
-	// create window
-	static ControlWindow* Create( commandLine& cmdLine, CaptureWindow* captureWindow );
+		// destructor
+		~ControlWindow();
 
-	// destructor
-	~ControlWindow();
+		// process UI events
+		void ProcessEvents();
 
-	// process UI events
-	void ProcessEvents();
+		// window open/closed status
+		bool IsOpen() const;
+		bool IsClosed() const;
 
-	// window open/closed status
-	bool IsOpen() const;
-	bool IsClosed() const;
+		// sizeHint
+		virtual QSize sizeHint() const;
 
-	// sizeHint
-	virtual QSize sizeHint() const;
+	public slots:
+		void onDatasetType(const QString& text);
 
-public slots:
-	void onDatasetType( const QString& text );
+	protected:
+		ControlWindow(commandLine& cmdLine, CaptureWindow* captureWindow);
 
-protected:
-	ControlWindow( commandLine& cmdLine, CaptureWindow* captureWindow );
+		static const int numDatasetTypes = 2;
 
-	static const int numDatasetTypes = 2;
-
-	const char*    datasetTypes[numDatasetTypes];
-	QWidget*       datasetWidgets[numDatasetTypes];
-	CaptureWindow* captureWindow;
-	commandLine*   cmdLine;	
-};
-
+		const char* datasetTypes[numDatasetTypes];
+		QWidget* datasetWidgets[numDatasetTypes];
+		CaptureWindow* captureWindow;
+		commandLine* cmdLine;
+	};
 
 #endif
-

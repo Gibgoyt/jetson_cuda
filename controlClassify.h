@@ -28,48 +28,44 @@
 #include "commandLine.h"
 #include "captureWindow.h"
 
+	/*
+	 * Classification control widget
+	 */
+	class ControlClassifyWidget : public QWidget {
+		Q_OBJECT
 
-/*
- * Classification control widget
- */
-class ControlClassifyWidget : public QWidget
-{
-	Q_OBJECT
+	public:
+		// create window
+		ControlClassifyWidget(commandLine* cmdLine, CaptureWindow* captureWindow);
 
-public:
-	// create window
-	ControlClassifyWidget( commandLine* cmdLine, CaptureWindow* captureWindow );
+		// destructor
+		~ControlClassifyWidget();
 
-	// destructor
-	~ControlClassifyWidget();
+	public slots:
+		void onCapture();
+		void onQualityChanged(int value);
 
-public slots:
-	void onCapture();
-	void onQualityChanged( int value );
+		void selectDatasetPath();
+		void selectLabelFile();
 
-	void selectDatasetPath();
-	void selectLabelFile();
+	protected:
+		void createDatasetDirectories();
 
-protected:
-	void createDatasetDirectories();
+		CaptureWindow* captureWindow;
+		QStatusBar* statusBar;
 
-	CaptureWindow* captureWindow;
-	QStatusBar*    statusBar;
+		std::string labelPath;
+		QLabel* labelWidget;
+		QComboBox* labelDropdown;
+		QComboBox* setDropdown;
 
-	std::string labelPath;
-	QLabel*     labelWidget;
-	QComboBox*  labelDropdown;
-	QComboBox*  setDropdown;
+		std::string datasetPath;
+		QLabel* datasetWidget;
 
-	std::string datasetPath;
-	QLabel*     datasetWidget;	
+		QLabel* qualityLabel;
+		QSlider* qualitySlider;
 
-	QLabel*     qualityLabel;
-	QSlider*    qualitySlider;
-
-	QPushButton* captureButton;
-};
-
+		QPushButton* captureButton;
+	};
 
 #endif
-

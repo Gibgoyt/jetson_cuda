@@ -23,25 +23,21 @@
 #include "controlClassify.h"
 #include "imageNet.h"
 
-
 #define STATUS_MSG "Status - "
 #define SELECT_LABEL_FILE_MSG STATUS_MSG "select output dataset path and label file"
 
 #define DEFAULT_JPEG_QUALITY 95
 
-
 // constructor
-ControlClassifyWidget::ControlClassifyWidget( commandLine* cmdLine, CaptureWindow* capture )
-{
+ControlClassifyWidget::ControlClassifyWidget(commandLine* cmdLine, CaptureWindow* capture) {
 	captureWindow = capture;
 
 	/*
 	 * create layout
- 	 */
+	 */
 	QVBoxLayout* layout = new QVBoxLayout();
 
 	layout->setAlignment(Qt::AlignTop);
-
 
 	// dataset location
 	QHBoxLayout* datasetLayout = new QHBoxLayout();
@@ -52,7 +48,7 @@ ControlClassifyWidget::ControlClassifyWidget( commandLine* cmdLine, CaptureWindo
 
 	datasetWidget = new QLabel();
 
-	datasetWidget->setFrameStyle(QFrame::Panel|QFrame::Sunken);
+	datasetWidget->setFrameStyle(QFrame::Panel | QFrame::Sunken);
 	datasetWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 
 	datasetLayout->addWidget(new QLabel(tr("Dataset Path    ")));
@@ -60,7 +56,6 @@ ControlClassifyWidget::ControlClassifyWidget( commandLine* cmdLine, CaptureWindo
 	datasetLayout->addWidget(datasetButton);
 
 	layout->addItem(datasetLayout);
-
 
 	// class label file
 	QHBoxLayout* labelLayout = new QHBoxLayout();
@@ -71,7 +66,7 @@ ControlClassifyWidget::ControlClassifyWidget( commandLine* cmdLine, CaptureWindo
 
 	labelWidget = new QLabel();
 
-	labelWidget->setFrameStyle(QFrame::Panel|QFrame::Sunken);
+	labelWidget->setFrameStyle(QFrame::Panel | QFrame::Sunken);
 	labelWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 
 	labelLayout->addWidget(new QLabel(tr("Class Labels      ")));
@@ -79,7 +74,6 @@ ControlClassifyWidget::ControlClassifyWidget( commandLine* cmdLine, CaptureWindo
 	labelLayout->addWidget(labelButton);
 
 	layout->addItem(labelLayout);
-
 
 	// subset drop-down
 	QHBoxLayout* subsetLayout = new QHBoxLayout();
@@ -97,7 +91,6 @@ ControlClassifyWidget::ControlClassifyWidget( commandLine* cmdLine, CaptureWindo
 
 	layout->addItem(subsetLayout);
 
-
 	// class label drop-down
 	QHBoxLayout* classLayout = new QHBoxLayout();
 
@@ -110,13 +103,12 @@ ControlClassifyWidget::ControlClassifyWidget( commandLine* cmdLine, CaptureWindo
 
 	layout->addItem(classLayout);
 
-
 	// jpeg quality
 	QHBoxLayout* qualityLayout = new QHBoxLayout();
 
 	qualitySlider = new QSlider(Qt::Horizontal);
 
-	qualitySlider->setRange(1,100);
+	qualitySlider->setRange(1, 100);
 	qualitySlider->setValue(DEFAULT_JPEG_QUALITY);
 
 	connect(qualitySlider, SIGNAL(valueChanged(int)), this, SLOT(onQualityChanged(int)));
@@ -129,7 +121,6 @@ ControlClassifyWidget::ControlClassifyWidget( commandLine* cmdLine, CaptureWindo
 
 	layout->addLayout(qualityLayout);
 
-
 	// capture button
 	captureButton = new QPushButton("Capture (space)");
 
@@ -140,7 +131,6 @@ ControlClassifyWidget::ControlClassifyWidget( commandLine* cmdLine, CaptureWindo
 
 	layout->addWidget(captureButton);
 
-
 	// status bar
 	statusBar = new QStatusBar();
 
@@ -149,33 +139,25 @@ ControlClassifyWidget::ControlClassifyWidget( commandLine* cmdLine, CaptureWindo
 
 	layout->addWidget(statusBar);
 
-	
 	/*
 	 * configure options
- 	 */
+	 */
 	setLayout(layout);
 }
 
-
 // destructor
-ControlClassifyWidget::~ControlClassifyWidget()
-{
-
-
-}
-
+ControlClassifyWidget::~ControlClassifyWidget() {}
 
 // createDatasetDirectories
-void ControlClassifyWidget::createDatasetDirectories()
-{
+void ControlClassifyWidget::createDatasetDirectories() {
 	// check that we have a valid path to the dataset
-	if( datasetPath.size() == 0 )
+	if (datasetPath.size() == 0)
 		return;
 
 	// check that we have loaded class labels
 	const int numClasses = labelDropdown->count();
 
-	if( numClasses == 0 )
+	if (numClasses == 0)
 		return;
 
 	// check that each subdirectory exists
@@ -184,56 +166,50 @@ void ControlClassifyWidget::createDatasetDirectories()
 	// create directories for each training set and class
 	const int numSets = setDropdown->count();
 
-	for( int s=0; s < numSets; s++ )
-	{
+	for (int s = 0; s < numSets; s++) {
 		const QString setName = setDropdown->itemText(s);
 
-		if( !dir.exists(setName) )
-		{
-			if( !dir.mkdir(setName) )
-			{
-				const QString msg = QString("Failed to create dataset subdirectory '%1/'").arg(setName);
+		if (!dir.exists(setName)) {
+			if (!dir.mkdir(setName)) {
+				const QString msg =
+				    QString("Failed to create dataset subdirectory '%1/'").arg(setName);
 				QMessageBox::critical(this, tr("Error Creating Dataset Directories"), msg);
 				statusBar->showMessage(QString(STATUS_MSG) + msg);
 				continue;
 			}
 		}
-	
+
 		QDir setDir = dir;
-		
-		if( !setDir.cd(setName) )
-		{
+
+		if (!setDir.cd(setName)) {
 			const QString msg = QString("Failed to cd to dataset subdirectory '%1/'").arg(setName);
 			QMessageBox::critical(this, tr("Error Creating Dataset Directories"), msg);
 			statusBar->showMessage(QString(STATUS_MSG) + msg);
 			continue;
 		}
 
-		for( int n=0; n < numClasses; n++ )
-		{
+		for (int n = 0; n < numClasses; n++) {
 			const QString subdir = labelDropdown->itemText(n);
 
-			if( !setDir.exists(subdir) )
-			{
-				if( !setDir.mkdir(subdir) )
-				{
-					const QString msg = QString("Failed to create dataset subdirectory '%1/%2/'").arg(setName, subdir);
+			if (!setDir.exists(subdir)) {
+				if (!setDir.mkdir(subdir)) {
+					const QString msg = QString("Failed to create dataset subdirectory '%1/%2/'")
+					                        .arg(setName, subdir);
 					QMessageBox::critical(this, tr("Error Creating Dataset Directories"), msg);
 					statusBar->showMessage(QString(STATUS_MSG) + msg);
 					continue;
 				}
 			}
 		}
-	}		
+	}
 }
 
 // selectDatasetPath
-void ControlClassifyWidget::selectDatasetPath()
-{
+void ControlClassifyWidget::selectDatasetPath() {
 	// prompt user to select the file
 	QString qPath = QFileDialog::getExistingDirectory(this, tr("Select Dataset Directory"));
 
-	if( qPath.size() == 0 )
+	if (qPath.size() == 0)
 		return;
 
 	datasetPath = qPath.toUtf8().constData();
@@ -242,7 +218,7 @@ void ControlClassifyWidget::selectDatasetPath()
 	createDatasetDirectories();
 
 	// enable capture button
-	if( datasetPath.size() > 0 && labelPath.size() > 0 )
+	if (datasetPath.size() > 0 && labelPath.size() > 0)
 		captureButton->setEnabled(true);
 
 	// update label with new path
@@ -252,25 +228,31 @@ void ControlClassifyWidget::selectDatasetPath()
 	datasetWidget->setText(clippedText);
 }
 
-
 // selectLabelFile
-void ControlClassifyWidget::selectLabelFile()
-{
+void ControlClassifyWidget::selectLabelFile() {
 	// prompt user to select the file
-	QString qFilename = QFileDialog::getOpenFileName(this, tr("Select Label File"), QString(), tr("Text Files (*.txt)"));
+	QString qFilename = QFileDialog::getOpenFileName(
+	    this,
+	    tr("Select Label File"),
+	    QString(),
+	    tr("Text Files (*.txt)")
+	);
 
-	if( qFilename.size() == 0 )
+	if (qFilename.size() == 0)
 		return;
 
 	labelPath = qFilename.toUtf8().constData();
 
-	// load the class descriptions	
+	// load the class descriptions
 	std::vector<std::string> classDesc;
 
-	if( !imageNet::LoadClassLabels(labelPath.c_str(), classDesc) )
-	{
-		QMessageBox::critical(this, tr("Failed to Load Class Labels"), tr("There was an error loading the label files from:  ") + qFilename);
-		statusBar->showMessage(tr(SELECT_LABEL_FILE_MSG));		
+	if (!imageNet::LoadClassLabels(labelPath.c_str(), classDesc)) {
+		QMessageBox::critical(
+		    this,
+		    tr("Failed to Load Class Labels"),
+		    tr("There was an error loading the label files from:  ") + qFilename
+		);
+		statusBar->showMessage(tr(SELECT_LABEL_FILE_MSG));
 		return;
 	}
 
@@ -279,17 +261,16 @@ void ControlClassifyWidget::selectLabelFile()
 
 	labelDropdown->clear();
 
-	for( size_t n=0; n < numClasses; n++ )
-		labelDropdown->addItem(QString::fromStdString(classDesc[n]));		
+	for (size_t n = 0; n < numClasses; n++)
+		labelDropdown->addItem(QString::fromStdString(classDesc[n]));
 
 	statusBar->showMessage(QString(STATUS_MSG "loaded %1 class labels").arg(numClasses));
-
 
 	// make sure the directories exist
 	createDatasetDirectories();
 
 	// enable capture button
-	if( datasetPath.size() > 0 && labelPath.size() > 0 )
+	if (datasetPath.size() > 0 && labelPath.size() > 0)
 		captureButton->setEnabled(true);
 
 	// update label with new filename
@@ -299,32 +280,30 @@ void ControlClassifyWidget::selectLabelFile()
 	labelWidget->setText(clippedText);
 }
 
-
 // onCapture
-void ControlClassifyWidget::onCapture()
-{
+void ControlClassifyWidget::onCapture() {
 	const std::string subsetLabel = setDropdown->currentText().toUtf8().constData();
-	const std::string classLabel  = labelDropdown->currentText().toUtf8().constData();
-	const std::string timestamp   = QDateTime::currentDateTime().toString("yyyyMMdd-hhmmss").toUtf8().constData();
-	const std::string subdirPath  = subsetLabel + "/" + classLabel;
-	const std::string directory   = datasetPath + "/" + subdirPath;
-	const std::string filename    = directory + "/" + timestamp + ".jpg";
+	const std::string classLabel = labelDropdown->currentText().toUtf8().constData();
+	const std::string timestamp =
+	    QDateTime::currentDateTime().toString("yyyyMMdd-hhmmss").toUtf8().constData();
+	const std::string subdirPath = subsetLabel + "/" + classLabel;
+	const std::string directory = datasetPath + "/" + subdirPath;
+	const std::string filename = directory + "/" + timestamp + ".jpg";
 
-	if( !captureWindow->Save(filename.c_str()) )
-	{
-		statusBar->showMessage(QString(STATUS_MSG "failed to save ") + QString::fromStdString(timestamp) + QString(".jpg"));
+	if (!captureWindow->Save(filename.c_str())) {
+		statusBar->showMessage(
+		    QString(STATUS_MSG "failed to save ") + QString::fromStdString(timestamp) +
+		    QString(".jpg")
+		);
 		return;
 	}
 
 	const int numFiles = QDir(directory.c_str()).count() - 2;
-	statusBar->showMessage(QString(STATUS_MSG "%1 images in %2").arg(QString::number(numFiles), QString::fromStdString(subdirPath)));
+	statusBar->showMessage(QString(STATUS_MSG "%1 images in %2")
+	                           .arg(QString::number(numFiles), QString::fromStdString(subdirPath)));
 }
-
 
 // onQualityChanged
-void ControlClassifyWidget::onQualityChanged( int value )
-{
+void ControlClassifyWidget::onQualityChanged(int value) {
 	qualityLabel->setText(QString::number(value));
 }
-
-

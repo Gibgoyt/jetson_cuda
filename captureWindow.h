@@ -26,75 +26,68 @@
 #include "commandLine.h"
 #include "cudaUtility.h"
 
-// forward declarations
-class videoSource;
-class glDisplay;
-class glWidget;
+	// forward declarations
+	class videoSource;
+	class glDisplay;
+	class glWidget;
 
+	/*
+	 * Camera feed window
+	 */
+	class CaptureWindow {
+	public:
+		// CaptureMode enum
+		enum CaptureMode { Live, Edit };
 
-/*
- * Camera feed window
- */
-class CaptureWindow
-{
-public:
-	// CaptureMode enum
-	enum CaptureMode
-	{
-		Live,
-		Edit
+		// create the window and camera object
+		static CaptureWindow* Create(commandLine& cmdLine);
+
+		// close the window and camera object
+		~CaptureWindow();
+
+		// capture & render next camera frame
+		void Render();
+
+		// save the latest frame to disk
+		bool Save(const char* filename, int quality = 95);
+
+		// set the current capture mode
+		void SetMode(CaptureMode mode);
+
+		// window open/closed status
+		bool IsOpen() const;
+		bool IsClosed() const;
+
+		// camera streaming status
+		bool IsStreaming() const;
+
+		// camera dimensions
+		int GetCameraWidth() const;
+		int GetCameraHeight() const;
+
+		// window dimensions
+		int GetWindowWidth() const;
+		int GetWindowHeight() const;
+
+		// widget operations
+		glWidget* GetWidget(int index) const;
+
+		void RemoveWidget(int index) const;
+		void RemoveAllWidgets() const;
+
+	protected:
+		CaptureWindow();
+		bool init(commandLine& cmdLine);
+
+		static const int cameraOffsetX = 5;
+		static const int cameraOffsetY = 5;
+
+		CaptureMode mode;
+
+		videoSource* camera;
+		glDisplay* display;
+
+		uchar3* imgRGB;
 	};
 
-	// create the window and camera object
-	static CaptureWindow* Create( commandLine& cmdLine );
-
-	// close the window and camera object
-	~CaptureWindow();
-
-	// capture & render next camera frame
-	void Render();
-
-	// save the latest frame to disk
-	bool Save( const char* filename, int quality=95 );
-
-	// set the current capture mode
-	void SetMode( CaptureMode mode );
-
-	// window open/closed status
-	bool IsOpen() const;
-	bool IsClosed() const;
-
-	// camera streaming status
-	bool IsStreaming() const;
-
-	// camera dimensions
-	int GetCameraWidth() const;
-	int GetCameraHeight() const;
-
-	// window dimensions
-	int GetWindowWidth() const;
-	int GetWindowHeight() const;
-
-	// widget operations
-	glWidget* GetWidget( int index ) const;
-
-	void RemoveWidget( int index ) const;
-	void RemoveAllWidgets() const;
-
-protected:
-	CaptureWindow();
-	bool init( commandLine& cmdLine );
-
-	static const int cameraOffsetX = 5;
-	static const int cameraOffsetY = 5;
-
-	CaptureMode mode;
-
-	videoSource* camera;
-	glDisplay* display;
-
-	uchar3* imgRGB;
-};
-
 #endif
-

@@ -28,32 +28,25 @@
 
 #include <X11/cursorfont.h>
 
-
 // constructor
-CaptureWindow::CaptureWindow()
-{
-	mode    = Live;
-	camera  = NULL;
+CaptureWindow::CaptureWindow() {
+	mode = Live;
+	camera = NULL;
 	display = NULL;
-	imgRGB  = NULL;
+	imgRGB = NULL;
 }
 
-
 // destructor
-CaptureWindow::~CaptureWindow()
-{
+CaptureWindow::~CaptureWindow() {
 	SAFE_DELETE(camera);
 	SAFE_DELETE(display);
 }
 
-
 // Create
-CaptureWindow* CaptureWindow::Create( commandLine& cmdLine )
-{
+CaptureWindow* CaptureWindow::Create(commandLine& cmdLine) {
 	CaptureWindow* window = new CaptureWindow();
 
-	if( !window || !window->init(cmdLine) )
-	{
+	if (!window || !window->init(cmdLine)) {
 		printf("camera-capture:  CaptureWindow::Create() failed\n");
 		return NULL;
 	}
@@ -61,65 +54,69 @@ CaptureWindow* CaptureWindow::Create( commandLine& cmdLine )
 	return window;
 }
 
-
 // init
-bool CaptureWindow::init( commandLine& cmdLine )
-{
+bool CaptureWindow::init(commandLine& cmdLine) {
 	/*
 	 * create the camera device
 	 */
 	camera = videoSource::Create(cmdLine, ARG_POSITION(0));
 
-	if( !camera )
-	{
+	if (!camera) {
 		printf("\ncamera-capture:  failed to initialize video device\n");
 		return false;
 	}
-	
-	printf("\ncamera-capture:  successfully initialized video device (%ux%u)\n", camera->GetWidth(), camera->GetHeight());
-	
+
+	printf(
+	    "\ncamera-capture:  successfully initialized video device (%ux%u)\n",
+	    camera->GetWidth(),
+	    camera->GetHeight()
+	);
 
 	/*
 	 * create openGL window
 	 */
-	display = glDisplay::Create("Data Collection Tool",
-						   camera->GetWidth() + cameraOffsetX + 5,
-						   camera->GetHeight() + cameraOffsetY + 5);
+	display = glDisplay::Create(
+	    "Data Collection Tool",
+	    camera->GetWidth() + cameraOffsetX + 5,
+	    camera->GetHeight() + cameraOffsetY + 5
+	);
 
-	if( !display ) 
-	{
+	if (!display) {
 		printf("camera-capture:  failed to create openGL display\n");
 		return false;
 	}
 
 	/*glWidget* widget = display->AddWidget(new glWidget(50, 50, 200, 500));
-	
+
 	widget->SetMoveable(true);
 	widget->SetResizeable(true);*/
 
-	//display->SetCursor(XC_tcross);
-	//display->ResetCursor();
+	// display->SetCursor(XC_tcross);
+	// display->ResetCursor();
 
 	return true;
 }
 
-
 // Render
-void CaptureWindow::Render()
-{
+void CaptureWindow::Render() {
 	// capture RGBA image
-	if( mode == Live )
-	{
-		if( !camera->Capture(&imgRGB, 1000) )
+	if (mode == Live) {
+		if (!camera->Capture(&imgRGB, 1000))
 			printf("camera-capture:  failed to capture RGBA image from camera\n");
 	}
 
 	// update display
-	if( display != NULL )
-	{
+	if (display != NULL) {
 		// render the image
-		if( imgRGB != NULL )
-			display->RenderOnce(imgRGB, camera->GetWidth(), camera->GetHeight(), IMAGE_RGB8, cameraOffsetX, cameraOffsetY);
+		if (imgRGB != NULL)
+			display->RenderOnce(
+			    imgRGB,
+			    camera->GetWidth(),
+			    camera->GetHeight(),
+			    IMAGE_RGB8,
+			    cameraOffsetX,
+			    cameraOffsetY
+			);
 
 		// update the status bar
 		char str[256];
@@ -128,17 +125,14 @@ void CaptureWindow::Render()
 	}
 }
 
-
 // Save
-bool CaptureWindow::Save( const char* filename, int quality )
-{
-	if( !filename || !imgRGB )
+bool CaptureWindow::Save(const char* filename, int quality) {
+	if (!filename || !imgRGB)
 		return false;
 
 	CUDA(cudaDeviceSynchronize());
 
-	if( !saveImage(filename, imgRGB, camera->GetWidth(), camera->GetHeight(), quality) )
-	{
+	if (!saveImage(filename, imgRGB, camera->GetWidth(), camera->GetHeight(), quality)) {
 		printf("camera-capture:  failed to save %s\n", filename);
 		return false;
 	}
@@ -147,96 +141,65 @@ bool CaptureWindow::Save( const char* filename, int quality )
 	return true;
 }
 
-
 // SetMode
-void CaptureWindow::SetMode( CaptureMode _mode )
-{
+void CaptureWindow::SetMode(CaptureMode _mode) {
 	mode = _mode;
 
-	if( mode == Edit )
-	{
+	if (mode == Edit) {
 		display->SetDefaultCursor(XC_tcross);
 		display->SetDragMode(glDisplay::DragCreate);
-	}
-	else if( mode == Live )
-	{
+	} else if (mode == Live) {
 		display->ResetDefaultCursor();
 		display->SetDragMode(glDisplay::DragDefault);
 	}
 }
 
-
 // IsOpen
-bool CaptureWindow::IsOpen() const
-{
+bool CaptureWindow::IsOpen() const {
 	return display->IsOpen();
 }
 
-
 // IsClosed
-bool CaptureWindow::IsClosed() const
-{
+bool CaptureWindow::IsClosed() const {
 	return display->IsClosed();
 }
 
-
 // IsStreaming
-bool CaptureWindow::IsStreaming() const
-{
+bool CaptureWindow::IsStreaming() const {
 	return camera->IsStreaming();
 }
 
-
 // GetCameraWidth
-int CaptureWindow::GetCameraWidth() const
-{
+int CaptureWindow::GetCameraWidth() const {
 	return camera->GetWidth();
 }
 
-
 // GetCameraHeight
-int CaptureWindow::GetCameraHeight() const
-{
+int CaptureWindow::GetCameraHeight() const {
 	return camera->GetHeight();
 }
 
-
 // GetWindowWidth
-int CaptureWindow::GetWindowWidth() const
-{
+int CaptureWindow::GetWindowWidth() const {
 	return display->GetWidth();
 }
 
-
 // GetWindowHeight
-int CaptureWindow::GetWindowHeight() const
-{
+int CaptureWindow::GetWindowHeight() const {
 	return display->GetHeight();
 }
 
-
 // GetWidget
-glWidget* CaptureWindow::GetWidget( int index ) const
-{
+glWidget* CaptureWindow::GetWidget(int index) const {
 	display->GetWidget(index);
 }
 
-
 // RemoveWidget
-void CaptureWindow::RemoveWidget( int index ) const
-{
+void CaptureWindow::RemoveWidget(int index) const {
 	display->RemoveWidget(index);
 }
 
-
 // RemoveAllWidgets
-void CaptureWindow::RemoveAllWidgets() const
-{
+void CaptureWindow::RemoveAllWidgets() const {
 	display->RemoveAllWidgets();
 }
-
-
-
-
-
-
