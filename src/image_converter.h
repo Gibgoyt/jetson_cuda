@@ -28,91 +28,87 @@
 
 #include "ros_compat.h"
 
-
-/**
- * GPU image conversion
- */
-class imageConverter
-{
-public:
 	/**
-	 * Output image pixel type
+	 * GPU image conversion
 	 */
-	typedef uchar3 PixelType;
+	class imageConverter {
+	public:
+		/**
+		 * Output image pixel type
+		 */
+		typedef uchar3 PixelType;
 
-	/**
-	 * Image format used for internal CUDA processing
-	 */
-	static const imageFormat InternalFormat = IMAGE_RGB8;
+		/**
+		 * Image format used for internal CUDA processing
+		 */
+		static const imageFormat InternalFormat = IMAGE_RGB8;
 
-	/**
-	 * Image format used for outputting ROS image messages
-	 */
-	static const imageFormat ROSOutputFormat = IMAGE_BGR8;
+		/**
+		 * Image format used for outputting ROS image messages
+		 */
+		static const imageFormat ROSOutputFormat = IMAGE_BGR8;
 
-	/**
-	 * Constructor
-	 */
-	imageConverter();
+		/**
+		 * Constructor
+		 */
+		imageConverter();
 
-	/**
-	 * Destructor
-	 */
-	~imageConverter();
+		/**
+		 * Destructor
+		 */
+		~imageConverter();
 
-	/**
-	 * Free the memory
-	 */
-	void Free();
+		/**
+		 * Free the memory
+		 */
+		void Free();
 
-	/**
-	 * Convert to 32-bit RGBA floating point
-	 */
-	bool Convert( const sensor_msgs::ImageConstPtr& input );
+		/**
+		 * Convert to 32-bit RGBA floating point
+		 */
+		bool Convert(const sensor_msgs::ImageConstPtr& input);
 
-	/**
-	 * Convert to ROS sensor_msgs::Image message
-	 */
-	bool Convert( sensor_msgs::Image& msg_out, imageFormat outputFormat );
+		/**
+		 * Convert to ROS sensor_msgs::Image message
+		 */
+		bool Convert(sensor_msgs::Image& msg_out, imageFormat outputFormat);
 
-	/**
-	 * Convert to ROS sensor_msgs::Image message
-	 */
-	bool Convert( sensor_msgs::Image& msg_out, imageFormat outputFormat, PixelType* imageGPU );
+		/**
+		 * Convert to ROS sensor_msgs::Image message
+		 */
+		bool Convert(sensor_msgs::Image& msg_out, imageFormat outputFormat, PixelType* imageGPU);
 
-	/**
-	 * Resize the memory (if necessary)
-	 */
-	bool Resize( uint32_t width, uint32_t height, imageFormat inputFormat );
+		/**
+		 * Resize the memory (if necessary)
+		 */
+		bool Resize(uint32_t width, uint32_t height, imageFormat inputFormat);
 
-	/**
-	 * Retrieve the converted image width
-	 */
-	inline uint32_t GetWidth() const		{ return mWidth; }
+		/**
+		 * Retrieve the converted image width
+		 */
+		inline uint32_t GetWidth() const { return mWidth; }
 
-	/**
-	 * Retrieve the converted image height
-	 */
-	inline uint32_t GetHeight() const		{ return mHeight; }
+		/**
+		 * Retrieve the converted image height
+		 */
+		inline uint32_t GetHeight() const { return mHeight; }
 
-	/**
-	 * Retrieve the GPU pointer of the converted image
-	 */
-	inline PixelType* ImageGPU() const		{ return mOutputGPU; }
+		/**
+		 * Retrieve the GPU pointer of the converted image
+		 */
+		inline PixelType* ImageGPU() const { return mOutputGPU; }
 
-private:
+	private:
+		uint32_t mWidth;
+		uint32_t mHeight;
+		size_t mSizeInput;
+		size_t mSizeOutput;
 
-	uint32_t mWidth;
-	uint32_t mHeight;	
-	size_t   mSizeInput;
-	size_t   mSizeOutput;
+		void* mInputCPU;
+		void* mInputGPU;
 
-	void* mInputCPU;
-	void* mInputGPU;
-
-	PixelType* mOutputCPU;
-	PixelType* mOutputGPU;
-};
+		PixelType* mOutputCPU;
+		PixelType* mOutputGPU;
+	};
 
 #endif
-

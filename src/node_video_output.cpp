@@ -25,23 +25,23 @@
 
 #include <jetson-utils/videoOutput.h>
 
-
-
-// globals	
+// globals
 videoOutput* stream = NULL;
 imageConverter* image_cvt = NULL;
 
 std::string topic_name;
 
-
 // input image subscriber callback
-void img_callback( const sensor_msgs::ImageConstPtr input )
-{
+void img_callback(const sensor_msgs::ImageConstPtr input) {
 	// convert the image to reside on GPU
-	if( !image_cvt || !image_cvt->Convert(input) )
-	{
-		ROS_INFO("failed to convert %ux%u %s image", input->width, input->height, input->encoding.c_str());
-		return;	
+	if (!image_cvt || !image_cvt->Convert(input)) {
+		ROS_INFO(
+		    "failed to convert %ux%u %s image",
+		    input->width,
+		    input->height,
+		    input->encoding.c_str()
+		);
+		return;
 	}
 
 	// render the image
@@ -49,23 +49,27 @@ void img_callback( const sensor_msgs::ImageConstPtr input )
 
 	// update status bar
 	char str[256];
-	sprintf(str, "%s (%ux%u) | %.1f FPS", topic_name.c_str(), image_cvt->GetWidth(), image_cvt->GetHeight(), stream->GetFrameRate());
-	stream->SetStatus(str);	
+	sprintf(
+	    str,
+	    "%s (%ux%u) | %.1f FPS",
+	    topic_name.c_str(),
+	    image_cvt->GetWidth(),
+	    image_cvt->GetHeight(),
+	    stream->GetFrameRate()
+	);
+	stream->SetStatus(str);
 
 	// check for EOS
-	if( !stream->IsStreaming() )
+	if (!stream->IsStreaming())
 		ROS_SHUTDOWN();
 }
 
-
 // node main loop
-int main(int argc, char **argv)
-{
+int main(int argc, char** argv) {
 	/*
 	 * create node instance
 	 */
 	ROS_CREATE_NODE("video_output");
-
 
 	/*
 	 * declare parameters
@@ -80,7 +84,7 @@ int main(int argc, char **argv)
 	ROS_DECLARE_PARAMETER("resource", resource_str);
 	ROS_DECLARE_PARAMETER("codec", codec_str);
 	ROS_DECLARE_PARAMETER("bitrate", video_bitrate);
-	
+
 	/*
 	 * retrieve parameters
 	 */
@@ -88,68 +92,61 @@ int main(int argc, char **argv)
 	ROS_GET_PARAMETER("codec", codec_str);
 	ROS_GET_PARAMETER("bitrate", video_bitrate);
 
-	if( resource_str.size() == 0 )
-	{
-		ROS_ERROR("resource param wasn't set - please set the node's resource parameter to the input device/filename/URL");
+	if (resource_str.size() == 0) {
+		ROS_ERROR(
+		    "resource param wasn't set - please set the node's resource parameter to the input "
+		    "device/filename/URL"
+		);
 		return 0;
 	}
 
-	if( codec_str.size() != 0 )
+	if (codec_str.size() != 0)
 		video_options.codec = videoOptions::CodecFromStr(codec_str.c_str());
 
 	video_options.bitRate = video_bitrate;
 
 	ROS_INFO("opening video output: %s", resource_str.c_str());
 
-
 	/*
 	 * create stream
 	 */
-	stream = videoOutput::Create(resource_str.c_str(), video_options); 
-	
-	if( !stream )
-	{
+	stream = videoOutput::Create(resource_str.c_str(), video_options);
+
+	if (!stream) {
 		ROS_ERROR("failed to open video output");
 		return 0;
 	}
-
 
 	/*
 	 * create image converter
 	 */
 	image_cvt = new imageConverter();
 
-	if( !image_cvt )
-	{
+	if (!image_cvt) {
 		ROS_ERROR("failed to create imageConverter");
 		return 0;
 	}
-
 
 	/*
 	 * subscribe to image topic
 	 */
 	auto img_sub = ROS_CREATE_SUBSCRIBER(sensor_msgs::Image, "image_in", 5, img_callback);
-	
-	topic_name = ROS_SUBSCRIBER_TOPIC(img_sub);
 
+	topic_name = ROS_SUBSCRIBER_TOPIC(img_sub);
 
 	/*
 	 * start streaming
 	 */
-	if( !stream->Open() )
-	{
+	if (!stream->Open()) {
 		ROS_ERROR("failed to start streaming video source");
 		return 0;
 	}
-
 
 	/*
 	 * start publishing video frames
 	 */
 	ROS_INFO("video_output node initialized, waiting for messages");
 	ROS_SPIN();
-
 
 	/*
 	 * free resources
@@ -159,4 +156,3 @@ int main(int argc, char **argv)
 
 	return 0;
 }
-
