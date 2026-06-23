@@ -1,3 +1,55 @@
+## What this codebase is
+
+`jetson-inference` (NVIDIA Jetson DNN library by dusty-nv). It's structured as roughly three layers:
+
+| Layer | Where | What |
+|---|---|---|
+| **Foundation utilities** | `utils/` (a git submodule!) | C++ helpers: filesystem, logging, command-line parsing, GStreamer camera/codec, OpenGL display, CUDA image ops, networking, threads |
+| **DNN engine + wrappers** | `c/` | TensorRT base class (`tensorNet`) + per-network wrappers (`imageNet`, `detectNet`, `segNet`, `poseNet`, `actionNet`, `depthNet`, `backgroundNet`) and CUDA pre/post-processing kernels |
+| **Apps** | `examples/`, `tools/`, `ros/`, `python/bindings/` | Small CLI apps that consume the library; ROS nodes; Python bindings |
+
+The build is CMake → links against TensorRT (`nvinfer`, `nvinfer_plugin`, `nvonnxparser`), CUDA, GStreamer, optionally OpenCV/VPI.
+
+## Important constraint: `utils/` is a git submodule
+
+`utils/` has its own `.git` directory, meaning your comments inside `utils/` would live in a separate repo. If you ever run `git submodule update`, local-only annotations could conflict. We should pick a doc strategy upfront (see Q3 below).
+
+---
+
+## Proposed learning path (easy → hard)
+
+I'd order it so each stage builds the mental model needed for the next:
+
+**Stage 1 — Pure C++ foundations (no CUDA, no DNN)**
+- `utils/commandLine.{h,cpp}` — argv parsing, used by every example
+- `utils/filesystem.{h,cpp}` — paths, file checks
+- `utils/logging.{h,cpp}` — LogInfo/LogError macros you'll see everywhere
+- `utils/timespec.{h,cpp}` — timing helpers
+
+**Stage 2 — CUDA fundamentals**
+- `utils/cuda/cudaUtility.h` — `CUDA()` error-check macros
+- `utils/cuda/cudaMappedMemory.h` — zero-copy CPU/GPU memory (key Jetson concept)
+- `utils/cuda/cudaVector.h`, `cudaMath.h` — small math helpers
+- A simple kernel pair: `cudaGrayscale.cu` then `cudaResize.cu`
+- Color conversion: `cudaRGB.cu` then `cudaYUV-*.cu`
+- `tensorConvert.cu` — converts image → NCHW float tensor (the bridge to TensorRT)
+
+**Stage 3 — Image / video I/O**
+- `utils/image/imageFormat.h` + `imageIO.{h,cpp}` (uses `stb_image`)
+- `utils/video/videoSource.{h,cpp}` and `videoOutput.{h,cpp}` — the unified streaming abstraction
+- `utils/camera/gstCamera.{h,cpp}` — GStreamer pipeline for CSI/USB cameras
+
+**Stage 4 — TensorRT base class**
+- `c/tensorNet.{h,cpp}` — engine load, serialization, binding, profiling. This is the most important file in `c/`.
+
+**Stage 5 — One DNN wrapper end-to-end**
+- `c/imageNet.{h,cpp}` + `examples/imagenet/imagenet.cpp` — the simplest classifier; trace one image from disk → CUDA tensor → TensorRT → top-K output
+
+**Stage 6 — Build out from there**
+- `c/detectNet` (adds bounding-box decoding in CUDA), then `segNet`, `poseNet`, `depthNet`
+
+**Stage 7 (optional/advanced)** — display (`utils/display/glDisplay`), tracking, TensorRT plugins under `c/plugins/`
+
 ## Plan: Inline-comment walkthrough of `jetson-inference`
 
 ### Conventions
