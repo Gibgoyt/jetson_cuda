@@ -1,0 +1,372 @@
+[ahmed@admin jetson-inference]$ ./Scripts/init_Gibgoyt_git.sh
+
+=== main repo (./.git) ===
+  OK:   renamed origin -> nvidia_upstream
+  fetching nvidia_upstream ...
+  queued 36 branches
+  pushing -> my_origin ...
+Enter passphrase for key '/home/ahmed/.ssh/id_ed25519_github': 
+Enumerating objects: 52, done.
+Counting objects: 100% (52/52), done.
+Delta compression using up to 20 threads
+Compressing objects: 100% (17/17), done.
+Writing objects: 100% (36/36), 5.68 KiB | 5.68 MiB/s, done.
+Total 36 (delta 21), reused 34 (delta 19), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (21/21), completed with 6 local objects.
+To github.com:Gibgoyt/jetson_cuda
+ * [new branch]        20200714 -> 20200714
+ * [new branch]        20230317 -> 20230317
+ * [new branch]        L4T-R24.1 -> L4T-R24.1
+ * [new branch]        L4T-R24.2 -> L4T-R24.2
+ * [new branch]        L4T-R27.1 -> L4T-R27.1
+ * [new branch]        L4T-R28.1 -> L4T-R28.1
+ * [new branch]        L4T-R28.2 -> L4T-R28.2
+ * [new branch]        L4T-R31.0 -> L4T-R31.0
+ * [new branch]        L4T-R32.1 -> L4T-R32.1
+ * [new branch]        L4T-R32.2 -> L4T-R32.2
+ * [new branch]        L4T-R32.3 -> L4T-R32.3
+ * [new branch]        L4T-R32.4.2 -> L4T-R32.4.2
+ * [new branch]        L4T-R32.4.3 -> L4T-R32.4.3
+ * [new branch]        L4T-R32.4.4 -> L4T-R32.4.4
+ * [new branch]        L4T-R32.5.0 -> L4T-R32.5.0
+ * [new branch]        L4T-R32.7.1 -> L4T-R32.7.1
+ * [new branch]        L4T-R34.1.1 -> L4T-R34.1.1
+ * [new branch]        L4T-R35.1.0 -> L4T-R35.1.0
+ * [new branch]        L4T-R35.2.1 -> L4T-R35.2.1
+ * [new branch]        L4T-R35.3.1 -> L4T-R35.3.1
+ * [new branch]        L4T-R35.4.1 -> L4T-R35.4.1
+ * [new branch]        L4T-R36.2.0 -> L4T-R36.2.0
+ * [new branch]        L4T-R36.3.0 -> L4T-R36.3.0
+ * [new branch]        action -> action
+ * [new branch]        depth -> depth
+ * [new branch]        dev -> dev
+ * [new branch]        doc-NGC-Registry-DIGITS -> doc-NGC-Registry-DIGITS
+ * [new branch]        focal -> focal
+ * [new branch]        jp5 -> jp5
+ * [new branch]        nvmm-disabled -> nvmm-disabled
+ * [new branch]        onnx -> onnx
+ * [new branch]        onnx2 -> onnx2
+ * [new branch]        python -> python
+ * [new branch]        pytorch -> pytorch
+ * [new branch]        x86 -> x86
+  fetching my_origin to populate remote-tracking refs ...
+Enter passphrase for key '/home/ahmed/.ssh/id_ed25519_github': 
+
+=== submodule [utils] -> utils -> branches at submodules/utils/* ===
+  OK:   renamed origin -> nvidia_upstream
+  OK:   added remote my_origin = git@github.com:Gibgoyt/jetson_cuda
+  fetching nvidia_upstream ...
+  queued 2 branches
+  pushing -> my_origin ...
+Enter passphrase for key '/home/ahmed/.ssh/id_ed25519_github': 
+Enumerating objects: 3775, done.
+Counting objects: 100% (3775/3775), done.
+Delta compression using up to 20 threads
+Compressing objects: 100% (1126/1126), done.
+Writing objects: 100% (3775/3775), 1.54 MiB | 7.03 MiB/s, done.
+Total 3775 (delta 2637), reused 3775 (delta 2637), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (2637/2637), done.
+To github.com:Gibgoyt/jetson_cuda
+ * [new branch]      master -> submodules/utils/master
+ * [new branch]      v1 -> submodules/utils/v1
+  fetching my_origin to populate remote-tracking refs ...
+Enter passphrase for key '/home/ahmed/.ssh/id_ed25519_github': 
+
+=== submodule [ros] -> ros -> branches at submodules/ros/* ===
+  OK:   renamed origin -> nvidia_upstream
+  OK:   added remote my_origin = git@github.com:Gibgoyt/jetson_cuda
+  fetching nvidia_upstream ...
+  queued 9 branches
+  pushing -> my_origin ...
+Enter passphrase for key '/home/ahmed/.ssh/id_ed25519_github': 
+Enumerating objects: 461, done.
+Counting objects: 100% (461/461), done.
+Delta compression using up to 20 threads
+Compressing objects: 100% (165/165), done.
+Writing objects: 100% (461/461), 115.27 KiB | 529.00 KiB/s, done.
+Total 461 (delta 277), reused 461 (delta 277), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (277/277), done.
+To github.com:Gibgoyt/jetson_cuda
+ * [new branch]      20230328 -> submodules/ros/20230328
+ * [new branch]      20230615 -> submodules/ros/20230615
+ * [new branch]      L4T-R28.2 -> submodules/ros/L4T-R28.2
+ * [new branch]      L4T-R32.1 -> submodules/ros/L4T-R32.1
+ * [new branch]      L4T-R35.1.0 -> submodules/ros/L4T-R35.1.0
+ * [new branch]      dev -> submodules/ros/dev
+ * [new branch]      master -> submodules/ros/master
+ * [new branch]      ros1 -> submodules/ros/ros1
+ * [new branch]      ros2 -> submodules/ros/ros2
+  fetching my_origin to populate remote-tracking refs ...
+Enter passphrase for key '/home/ahmed/.ssh/id_ed25519_github': 
+
+=== submodule [tools/camera-capture] -> tools/camera-capture -> branches at submodules/tools/camera-capture/* ===
+  OK:   renamed origin -> nvidia_upstream
+  OK:   added remote my_origin = git@github.com:Gibgoyt/jetson_cuda
+  fetching nvidia_upstream ...
+  queued 1 branches
+  pushing -> my_origin ...
+Enter passphrase for key '/home/ahmed/.ssh/id_ed25519_github': 
+Enter passphrase for key '/home/ahmed/.ssh/id_ed25519_github': 
+Enumerating objects: 114, done.
+Counting objects: 100% (114/114), done.
+Delta compression using up to 20 threads
+Compressing objects: 100% (39/39), done.
+Writing objects: 100% (114/114), 43.74 KiB | 43.74 MiB/s, done.
+Total 114 (delta 73), reused 114 (delta 73), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (73/73), done.
+remote: 
+remote: Create a pull request for 'submodules/tools/camera-capture/master' on GitHub by visiting:
+remote:      https://github.com/Gibgoyt/jetson_cuda/pull/new/submodules/tools/camera-capture/master
+remote: 
+To github.com:Gibgoyt/jetson_cuda
+ * [new branch]      master -> submodules/tools/camera-capture/master
+  fetching my_origin to populate remote-tracking refs ...
+Enter passphrase for key '/home/ahmed/.ssh/id_ed25519_github': 
+
+=== submodule [docker/containers] -> docker/containers -> branches at submodules/docker/containers/* ===
+  OK:   renamed origin -> nvidia_upstream
+  OK:   added remote my_origin = git@github.com:Gibgoyt/jetson_cuda
+  fetching nvidia_upstream ...
+  queued 56 branches
+  pushing -> my_origin ...
+Enter passphrase for key '/home/ahmed/.ssh/id_ed25519_github': 
+Enumerating objects: 45748, done.
+Counting objects: 100% (45748/45748), done.
+Delta compression using up to 20 threads
+Compressing objects: 100% (13945/13945), done.
+Writing objects: 100% (45748/45748), 225.68 MiB | 3.72 MiB/s, done.
+Total 45748 (delta 31169), reused 45748 (delta 31169), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (31169/31169), done.
+remote: warning: See https://gh.io/lfs for more information.
+remote: warning: File jax_cuda12_pjrt-0.4.35.dev20241013-py3-none-manylinux2014_aarch64.whl is 53.97 MB; this is larger than GitHub's recommended maximum file size of 50.00 MB
+remote: warning: File jaxlib-0.4.35.dev20241013-cp310-cp310-manylinux2014_aarch64.whl is 69.72 MB; this is larger than GitHub's recommended maximum file size of 50.00 MB
+remote: warning: GH001: Large files detected. You may want to try Git Large File Storage - https://git-lfs.github.com.
+To github.com:Gibgoyt/jetson_cuda
+ * [new branch]        L4T-R32.4.2 -> submodules/docker/containers/L4T-R32.4.2
+ * [new branch]        L4T-R32.4.3 -> submodules/docker/containers/L4T-R32.4.3
+ * [new branch]        L4T-R32.4.4 -> submodules/docker/containers/L4T-R32.4.4
+ * [new branch]        L4T-R32.5.0 -> submodules/docker/containers/L4T-R32.5.0
+ * [new branch]        L4T-R32.6.1 -> submodules/docker/containers/L4T-R32.6.1
+ * [new branch]        L4T-R32.7.1 -> submodules/docker/containers/L4T-R32.7.1
+ * [new branch]        L4T-R34.1.0 -> submodules/docker/containers/L4T-R34.1.0
+ * [new branch]        L4T-R34.1.1 -> submodules/docker/containers/L4T-R34.1.1
+ * [new branch]        L4T-R35.1.0 -> submodules/docker/containers/L4T-R35.1.0
+ * [new branch]        L4T-R35.2.1 -> submodules/docker/containers/L4T-R35.2.1
+ * [new branch]        L4T-R35.3.1 -> submodules/docker/containers/L4T-R35.3.1
+ * [new branch]        L4T-R35.4.1 -> submodules/docker/containers/L4T-R35.4.1
+ * [new branch]        L4T-R36.2.0 -> submodules/docker/containers/L4T-R36.2.0
+ * [new branch]        L4T-R36.3.0 -> submodules/docker/containers/L4T-R36.3.0
+ * [new branch]        L4T-R36.4.2 -> submodules/docker/containers/L4T-R36.4.2
+ * [new branch]        OriNachum-patch-1 -> submodules/docker/containers/OriNachum-patch-1
+ * [new branch]        OriNachum-patch-2 -> submodules/docker/containers/OriNachum-patch-2
+ * [new branch]        bugfix/#1016-resolve-smart-home-packages-network-issues -> submodules/docker/containers/bugfix/#1016-resolve-smart-home-packages-network-issues
+ * [new branch]        bugfix/fix-vllm-wheel-build-pattern -> submodules/docker/containers/bugfix/fix-vllm-wheel-build-pattern
+ * [new branch]        chore/docs -> submodules/docker/containers/chore/docs
+ * [new branch]        chore/readme-citation -> submodules/docker/containers/chore/readme-citation
+ * [new branch]        crossformer -> submodules/docker/containers/crossformer
+ * [new branch]        dependabot/github_actions/actions/checkout-7 -> submodules/docker/containers/dependabot/github_actions/actions/checkout-7
+ * [new branch]        dependabot/pip/black-gte-26.5.1 -> submodules/docker/containers/dependabot/pip/black-gte-26.5.1
+ * [new branch]        dependabot/pip/packages/vlm/vila-microservice/src/fastapi-0.138.0 -> submodules/docker/containers/dependabot/pip/packages/vlm/vila-microservice/src/fastapi-0.138.0
+ * [new branch]        dependabot/pip/packaging-gte-26.2 -> submodules/docker/containers/dependabot/pip/packaging-gte-26.2
+ * [new branch]        dependabot/pip/pre-commit-gte-4.6.0 -> submodules/docker/containers/dependabot/pip/pre-commit-gte-4.6.0
+ * [new branch]        dependabot/pip/pyyaml-gte-6.0.3 -> submodules/docker/containers/dependabot/pip/pyyaml-gte-6.0.3
+ * [new branch]        dev -> submodules/docker/containers/dev
+ * [new branch]        docs -> submodules/docker/containers/docs
+ * [new branch]        feat/l4t-upgrade-version-38.0.0 -> submodules/docker/containers/feat/l4t-upgrade-version-38.0.0
+ * [new branch]        feat/webhook-support -> submodules/docker/containers/feat/webhook-support
+ * [new branch]        feat/wget-reliability -> submodules/docker/containers/feat/wget-reliability
+ * [new branch]        feature/local-pypi-apt-servers -> submodules/docker/containers/feature/local-pypi-apt-servers
+ * [new branch]        feature/spark-tts -> submodules/docker/containers/feature/spark-tts
+ * [new branch]        feature/wyoming-piper-2.0.0 -> submodules/docker/containers/feature/wyoming-piper-2.0.0
+ * [new branch]        jp6 -> submodules/docker/containers/jp6
+ * [new branch]        legacy -> submodules/docker/containers/legacy
+ * [new branch]        master -> submodules/docker/containers/master
+ * [new branch]        package/chatterbox-tts -> submodules/docker/containers/package/chatterbox-tts
+ * [new branch]        package/graphiti -> submodules/docker/containers/package/graphiti
+ * [new branch]        package/llama-stack -> submodules/docker/containers/package/llama-stack
+ * [new branch]        packages/codex -> submodules/docker/containers/packages/codex
+ * [new branch]        packages/development-guidelines-documentation -> submodules/docker/containers/packages/development-guidelines-documentation
+ * [new branch]        packages/fix-causalconv1d-test -> submodules/docker/containers/packages/fix-causalconv1d-test
+ * [new branch]        packages/nvshmem -> submodules/docker/containers/packages/nvshmem
+ * [new branch]        packages/ragflow -> submodules/docker/containers/packages/ragflow
+ * [new branch]        packages/silerovad-library -> submodules/docker/containers/packages/silerovad-library
+ * [new branch]        packages/torchcodec -> submodules/docker/containers/packages/torchcodec
+ * [new branch]        quality/test-cuda-suite -> submodules/docker/containers/quality/test-cuda-suite
+ * [new branch]        revert-808-dev-ollama-installer -> submodules/docker/containers/revert-808-dev-ollama-installer
+ * [new branch]        script/setup-enhanced-mrg -> submodules/docker/containers/script/setup-enhanced-mrg
+ * [new branch]        scripts/setup-enhance -> submodules/docker/containers/scripts/setup-enhance
+ * [new branch]        test/suite -> submodules/docker/containers/test/suite
+ * [new branch]        trt-llm -> submodules/docker/containers/trt-llm
+ * [new branch]        update-dev-quality -> submodules/docker/containers/update-dev-quality
+  fetching my_origin to populate remote-tracking refs ...
+Enter passphrase for key '/home/ahmed/.ssh/id_ed25519_github': 
+
+=== submodule [plugins/pose] -> c/plugins/pose -> branches at submodules/c/plugins/pose/* ===
+  OK:   renamed origin -> nvidia_upstream
+  OK:   added remote my_origin = git@github.com:Gibgoyt/jetson_cuda
+  fetching nvidia_upstream ...
+  queued 8 branches
+  pushing -> my_origin ...
+Enter passphrase for key '/home/ahmed/.ssh/id_ed25519_github': 
+Enumerating objects: 1535, done.
+Counting objects: 100% (1535/1535), done.
+Delta compression using up to 20 threads
+Compressing objects: 100% (640/640), done.
+Writing objects: 100% (1535/1535), 2.02 MiB | 8.55 MiB/s, done.
+Total 1535 (delta 852), reused 1535 (delta 852), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (852/852), done.
+To github.com:Gibgoyt/jetson_cuda
+ * [new branch]      cpp -> submodules/c/plugins/pose/cpp
+ * [new branch]      cpp_clean -> submodules/c/plugins/pose/cpp_clean
+ * [new branch]      example_pipeline -> submodules/c/plugins/pose/example_pipeline
+ * [new branch]      master -> submodules/c/plugins/pose/master
+ * [new branch]      misc -> submodules/c/plugins/pose/misc
+ * [new branch]      refactor -> submodules/c/plugins/pose/refactor
+ * [new branch]      rn_pyr_model -> submodules/c/plugins/pose/rn_pyr_model
+ * [new branch]      tst_mdl -> submodules/c/plugins/pose/tst_mdl
+  fetching my_origin to populate remote-tracking refs ...
+Enter passphrase for key '/home/ahmed/.ssh/id_ed25519_github': 
+
+=== submodule [python/training/classification] -> python/training/classification -> branches at submodules/python/training/classification/* ===
+  OK:   renamed origin -> nvidia_upstream
+  OK:   added remote my_origin = git@github.com:Gibgoyt/jetson_cuda
+  fetching nvidia_upstream ...
+  queued 1 branches
+  pushing -> my_origin ...
+Enter passphrase for key '/home/ahmed/.ssh/id_ed25519_github': 
+Enumerating objects: 113, done.
+Counting objects: 100% (113/113), done.
+Delta compression using up to 20 threads
+Compressing objects: 100% (48/48), done.
+Writing objects: 100% (113/113), 33.21 KiB | 33.21 MiB/s, done.
+Total 113 (delta 58), reused 113 (delta 58), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (58/58), done.
+remote: 
+remote: Create a pull request for 'submodules/python/training/classification/master' on GitHub by visiting:
+remote:      https://github.com/Gibgoyt/jetson_cuda/pull/new/submodules/python/training/classification/master
+remote: 
+To github.com:Gibgoyt/jetson_cuda
+ * [new branch]      master -> submodules/python/training/classification/master
+  fetching my_origin to populate remote-tracking refs ...
+Enter passphrase for key '/home/ahmed/.ssh/id_ed25519_github': 
+
+=== submodule [python/training/detection] -> python/training/detection -> branches at submodules/python/training/detection/* ===
+  OK:   renamed origin -> nvidia_upstream
+  OK:   added remote my_origin = git@github.com:Gibgoyt/jetson_cuda
+  fetching nvidia_upstream ...
+  queued 2 branches
+  pushing -> my_origin ...
+Enter passphrase for key '/home/ahmed/.ssh/id_ed25519_github': 
+Enumerating objects: 108, done.
+Counting objects: 100% (108/108), done.
+Delta compression using up to 20 threads
+Compressing objects: 100% (65/65), done.
+Writing objects: 100% (108/108), 21.02 KiB | 21.02 MiB/s, done.
+Total 108 (delta 43), reused 108 (delta 43), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (43/43), done.
+To github.com:Gibgoyt/jetson_cuda
+ * [new branch]      master -> submodules/python/training/detection/master
+ * [new branch]      old -> submodules/python/training/detection/old
+  fetching my_origin to populate remote-tracking refs ...
+Enter passphrase for key '/home/ahmed/.ssh/id_ed25519_github': 
+Enter passphrase for key '/home/ahmed/.ssh/id_ed25519_github': 
+
+=== submodule [python/training/segmentation] -> python/training/segmentation -> branches at submodules/python/training/segmentation/* ===
+  OK:   renamed origin -> nvidia_upstream
+  OK:   added remote my_origin = git@github.com:Gibgoyt/jetson_cuda
+  fetching nvidia_upstream ...
+  queued 2 branches
+  pushing -> my_origin ...
+Enter passphrase for key '/home/ahmed/.ssh/id_ed25519_github': 
+Enumerating objects: 174, done.
+Counting objects: 100% (174/174), done.
+Delta compression using up to 20 threads
+Compressing objects: 100% (92/92), done.
+Writing objects: 100% (174/174), 167.06 MiB | 3.43 MiB/s, done.
+Total 174 (delta 80), reused 174 (delta 80), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (80/80), done.
+remote: warning: See https://gh.io/lfs for more information.
+remote: warning: File model_best.pth is 89.86 MB; this is larger than GitHub's recommended maximum file size of 50.00 MB
+remote: warning: File model_best.pth is 89.86 MB; this is larger than GitHub's recommended maximum file size of 50.00 MB
+remote: warning: GH001: Large files detected. You may want to try Git Large File Storage - https://git-lfs.github.com.
+To github.com:Gibgoyt/jetson_cuda
+ * [new branch]      dev -> submodules/python/training/segmentation/dev
+ * [new branch]      master -> submodules/python/training/segmentation/master
+  fetching my_origin to populate remote-tracking refs ...
+Enter passphrase for key '/home/ahmed/.ssh/id_ed25519_github': 
+
+=== nested submodule python/training/detection/ssd -> branches at submodules/python/training/detection/ssd/* ===
+  OK:   renamed origin -> nvidia_upstream
+  OK:   added remote my_origin = git@github.com:Gibgoyt/jetson_cuda
+  fetching nvidia_upstream ...
+  queued 13 branches
+  pushing -> my_origin ...
+Enter passphrase for key '/home/ahmed/.ssh/id_ed25519_github': 
+Enumerating objects: 1007, done.
+Counting objects: 100% (1007/1007), done.
+Delta compression using up to 20 threads
+Compressing objects: 100% (326/326), done.
+Writing objects: 100% (1007/1007), 1.10 MiB | 4.99 MiB/s, done.
+Total 1007 (delta 673), reused 1007 (delta 673), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (673/673), done.
+To github.com:Gibgoyt/jetson_cuda
+ * [new branch]      coordconv -> submodules/python/training/detection/ssd/coordconv
+ * [new branch]      dev -> submodules/python/training/detection/ssd/dev
+ * [new branch]      fpn -> submodules/python/training/detection/ssd/fpn
+ * [new branch]      master -> submodules/python/training/detection/ssd/master
+ * [new branch]      mb2 -> submodules/python/training/detection/ssd/mb2
+ * [new branch]      mb2-ssd-lite -> submodules/python/training/detection/ssd/mb2-ssd-lite
+ * [new branch]      onnx -> submodules/python/training/detection/ssd/onnx
+ * [new branch]      open_images -> submodules/python/training/detection/ssd/open_images
+ * [new branch]      res-512 -> submodules/python/training/detection/ssd/res-512
+ * [new branch]      squeezenet-ssd-lite -> submodules/python/training/detection/ssd/squeezenet-ssd-lite
+ * [new branch]      ssd-lite -> submodules/python/training/detection/ssd/ssd-lite
+ * [new branch]      upstream -> submodules/python/training/detection/ssd/upstream
+ * [new branch]      vgg-onnx -> submodules/python/training/detection/ssd/vgg-onnx
+  fetching my_origin to populate remote-tracking refs ...
+Enter passphrase for key '/home/ahmed/.ssh/id_ed25519_github': 
+
+=== rewriting top-level .gitmodules ===
+  utils                                    url    = git@github.com:Gibgoyt/jetson_cuda
+  utils                                    branch = submodules/utils/master
+  ros                                      url    = git@github.com:Gibgoyt/jetson_cuda
+  ros                                      branch = submodules/ros/master
+  tools/camera-capture                     url    = git@github.com:Gibgoyt/jetson_cuda
+  tools/camera-capture                     branch = submodules/tools/camera-capture/master
+  docker/containers                        url    = git@github.com:Gibgoyt/jetson_cuda
+  docker/containers                        branch = submodules/docker/containers/master
+  plugins/pose                             url    = git@github.com:Gibgoyt/jetson_cuda
+  plugins/pose                             branch = submodules/c/plugins/pose/master
+  python/training/classification           url    = git@github.com:Gibgoyt/jetson_cuda
+  python/training/classification           branch = submodules/python/training/classification/master
+  python/training/detection                url    = git@github.com:Gibgoyt/jetson_cuda
+  python/training/detection                branch = submodules/python/training/detection/master
+  python/training/segmentation             url    = git@github.com:Gibgoyt/jetson_cuda
+  python/training/segmentation             branch = submodules/python/training/segmentation/master
+
+=== DONE ===
+Summary:
+  * In every repo:
+      - remote 'origin' renamed to 'nvidia_upstream' (the NVIDIA official source)
+      - remote 'my_origin' = git@github.com:Gibgoyt/jetson_cuda (your consolidated fork)
+  * Submodule remotes use a restrictive fetch refspec so inside a submodule:
+      git fetch my_origin          # only that submodule's branches
+      git fetch nvidia_upstream          # all of NVIDIA upstream's branches
+      git push                      # pushes to the right submodules/<...>/<b>
+  * .gitmodules now points each submodule at the Gibgoyt fork at the right
+    branch. Review the diff before committing:
+      git diff .gitmodules
+
+Useful follow-ups:
+  * commit the changed .gitmodules and the new Scripts/ on master:
+      git add Scripts/ .gitmodules
+      git commit -m "fork init: dual-remote setup + consolidated submodule branches"
+      git push my_origin master
+  * to merge a future NVIDIA upstream change into your fork (per repo):
+      git fetch nvidia_upstream
+      git checkout master
+      git merge nvidia_upstream/master
+      git push                      # goes to my_origin/master (or the
+                                    # submodules/<...>/master equivalent)
+[ahmed@admin jetson-inference]$ 
+

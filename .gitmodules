@@ -1,30 +1,32 @@
 [submodule "utils"]
 	path = utils
-	url = https://github.com/dusty-nv/jetson-utils
-	branch = master
+	url = git@github.com:Gibgoyt/jetson_cuda
+	branch = submodules/utils/master
 [submodule "tools/camera-capture"]
 	path = tools/camera-capture
-	url = https://github.com/dusty-nv/camera-capture
-	branch = master
+	url = git@github.com:Gibgoyt/jetson_cuda
+	branch = submodules/tools/camera-capture/master
 [submodule "python/training/classification"]
 	path = python/training/classification
-	url = https://github.com/dusty-nv/pytorch-classification
-	branch = master
+	url = git@github.com:Gibgoyt/jetson_cuda
+	branch = submodules/python/training/classification/master
 [submodule "python/training/detection"]
 	path = python/training/detection
-	url = https://github.com/dusty-nv/pytorch-detection
-	branch = master
+	url = git@github.com:Gibgoyt/jetson_cuda
+	branch = submodules/python/training/detection/master
 [submodule "python/training/segmentation"]
 	path = python/training/segmentation
-	url = https://github.com/dusty-nv/pytorch-segmentation
-	branch = master
+	url = git@github.com:Gibgoyt/jetson_cuda
+	branch = submodules/python/training/segmentation/master
 [submodule "plugins/pose"]
 	path = c/plugins/pose
-	url = https://github.com/dusty-nv/trt_pose
+	url = git@github.com:Gibgoyt/jetson_cuda
+	branch = submodules/c/plugins/pose/master
 [submodule "docker/containers"]
 	path = docker/containers
-	url = https://github.com/dusty-nv/jetson-containers
-	branch = master
+	url = git@github.com:Gibgoyt/jetson_cuda
+	branch = submodules/docker/containers/master
 [submodule "ros"]
 	path = ros
-	url = https://github.com/dusty-nv/ros_deep_learning
+	url = git@github.com:Gibgoyt/jetson_cuda
+	branch = submodules/ros/master
