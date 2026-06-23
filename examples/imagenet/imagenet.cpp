@@ -28,24 +28,20 @@
 
 #include <signal.h>
 
-
 bool signal_recieved = false;
 
-void sig_handler(int signo)
-{
-	if( signo == SIGINT )
-	{
+void sig_handler(int signo) {
+	if (signo == SIGINT) {
 		LogVerbose("received SIGINT\n");
 		signal_recieved = true;
 	}
 }
 
-int usage()
-{
+int usage() {
 	printf("usage: imagenet [--help] [--network=NETWORK] ...\n");
 	printf("                input_URI [output_URI]\n\n");
 	printf("Classify a video/image stream using an image recognition DNN.\n");
-	printf("See below for additional arguments that may not be shown above.\n\n");	
+	printf("See below for additional arguments that may not be shown above.\n\n");
 	printf("optional arguments:\n");
 	printf("  --help            show this help message and exit\n");
 	printf("  --network=NETWORK pre-trained model to load (see below for options)\n");
@@ -62,145 +58,145 @@ int usage()
 	return 0;
 }
 
-int main( int argc, char** argv )
-{
+int main(int argc, char** argv) {
 	/*
 	 * parse command line
 	 */
 	commandLine cmdLine(argc, argv);
 
-	if( cmdLine.GetFlag("help") )
+	if (cmdLine.GetFlag("help"))
 		return usage();
-
 
 	/*
 	 * attach signal handler
 	 */
-	if( signal(SIGINT, sig_handler) == SIG_ERR )
+	if (signal(SIGINT, sig_handler) == SIG_ERR)
 		LogError("can't catch SIGINT\n");
-
 
 	/*
 	 * create input stream
 	 */
 	videoSource* input = videoSource::Create(cmdLine, ARG_POSITION(0));
 
-	if( !input )
-	{
+	if (!input) {
 		LogError("imagenet:  failed to create input stream\n");
 		return 1;
 	}
-
 
 	/*
 	 * create output stream
 	 */
 	videoOutput* output = videoOutput::Create(cmdLine, ARG_POSITION(1));
-	
-	if( !output )
-	{
-		LogError("imagenet:  failed to create output stream\n");	
+
+	if (!output) {
+		LogError("imagenet:  failed to create output stream\n");
 		return 1;
 	}
-	
 
 	/*
 	 * create font for image overlay
 	 */
 	cudaFont* font = cudaFont::Create();
-	
-	if( !font )
-	{
+
+	if (!font) {
 		LogError("imagenet:  failed to load font for overlay\n");
 		return 1;
 	}
-
 
 	/*
 	 * create recognition network
 	 */
 	imageNet* net = imageNet::Create(cmdLine);
-	
-	if( !net )
-	{
+
+	if (!net) {
 		LogError("imagenet:  failed to initialize imageNet\n");
 		return 1;
 	}
 
 	const int topK = cmdLine.GetInt("topK", 1);  // by default, get only the top result
-	
-	
+
 	/*
 	 * processing loop
 	 */
-	while( !signal_recieved )
-	{
+	while (!signal_recieved) {
 		// capture next image
 		uchar3* image = NULL;
 		int status = 0;
-		
-		if( !input->Capture(&image, &status) )
-		{
-			if( status == videoSource::TIMEOUT )
+
+		if (!input->Capture(&image, &status)) {
+			if (status == videoSource::TIMEOUT)
 				continue;
-			
-			break; // EOS
+
+			break;  // EOS
 		}
 
-		// classify image - note that if you only want the top class, you can simply run this instead:
-		// 	float confidence = 0.0f;
-		//	const int img_class = net->Classify(image, input->GetWidth(), input->GetHeight(), &confidence);
-		imageNet::Classifications classifications;	// std::vector<std::pair<uint32_t, float>>  (classID, confidence)
+		// classify image - note that if you only want the top class, you can simply run this
+		// instead: 	float confidence = 0.0f;
+		//	const int img_class = net->Classify(image, input->GetWidth(), input->GetHeight(),
+		//&confidence);
+		imageNet::Classifications
+		    classifications;  // std::vector<std::pair<uint32_t, float>>  (classID, confidence)
 
-		if( net->Classify(image, input->GetWidth(), input->GetHeight(), classifications, topK) < 0 )
+		if (net->Classify(image, input->GetWidth(), input->GetHeight(), classifications, topK) < 0)
 			continue;
-		
+
 		// draw predicted class labels
-		for( uint32_t n=0; n < classifications.size(); n++ )
-		{
+		for (uint32_t n = 0; n < classifications.size(); n++) {
 			const uint32_t classID = classifications[n].first;
 			const char* classLabel = net->GetClassLabel(classID);
 			const float confidence = classifications[n].second * 100.0f;
-			
-			LogVerbose("imagenet:  %2.5f%% class #%i (%s)\n", confidence, classID, classLabel);	
+
+			LogVerbose("imagenet:  %2.5f%% class #%i (%s)\n", confidence, classID, classLabel);
 
 			char str[256];
 			sprintf(str, "%05.2f%% %s", confidence, classLabel);
-			font->OverlayText(image, input->GetWidth(), input->GetHeight(),
-						   str, 5, 5 + n * (font->GetSize() + 5), 
-						   make_float4(255,255,255,255), make_float4(0,0,0,100));
+			font->OverlayText(
+			    image,
+			    input->GetWidth(),
+			    input->GetHeight(),
+			    str,
+			    5,
+			    5 + n * (font->GetSize() + 5),
+			    make_float4(255, 255, 255, 255),
+			    make_float4(0, 0, 0, 100)
+			);
 		}
-		
+
 		// render outputs
-		if( output != NULL )
-		{
+		if (output != NULL) {
 			output->Render(image, input->GetWidth(), input->GetHeight());
 
 			// update status bar
 			char str[256];
-			sprintf(str, "TensorRT %i.%i.%i | %s | Network %.0f FPS", NV_TENSORRT_MAJOR, NV_TENSORRT_MINOR, NV_TENSORRT_PATCH, net->GetNetworkName(), net->GetNetworkFPS());
-			output->SetStatus(str);	
+			sprintf(
+			    str,
+			    "TensorRT %i.%i.%i | %s | Network %.0f FPS",
+			    NV_TENSORRT_MAJOR,
+			    NV_TENSORRT_MINOR,
+			    NV_TENSORRT_PATCH,
+			    net->GetNetworkName(),
+			    net->GetNetworkFPS()
+			);
+			output->SetStatus(str);
 
 			// check if the user quit
-			if( !output->IsStreaming() )
+			if (!output->IsStreaming())
 				break;
 		}
 
 		// print out timing info
 		net->PrintProfilerTimes();
 	}
-	
-	
+
 	/*
 	 * destroy resources
 	 */
 	LogVerbose("imagenet:  shutting down...\n");
-	
+
 	SAFE_DELETE(input);
 	SAFE_DELETE(output);
 	SAFE_DELETE(net);
-	
+
 	LogVerbose("imagenet:  shutdown complete.\n");
 	return 0;
 }
-

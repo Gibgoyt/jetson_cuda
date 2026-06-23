@@ -23,29 +23,92 @@
 #ifndef __CUDA_TENSOR_PREPROCESSING_H__
 #define __CUDA_TENSOR_PREPROCESSING_H__
 
-
 #include <jetson-utils/cudaUtility.h>
 #include <jetson-utils/imageFormat.h>
 
+	/*
+	 * Downsample and apply mean pixel subtraction, NCHW format
+	 */
+	cudaError_t cudaTensorMeanRGB(
+	    void* input,
+	    imageFormat format,
+	    size_t inputWidth,
+	    size_t inputHeight,
+	    float* output,
+	    size_t outputWidth,
+	    size_t outputHeight,
+	    const float3& mean_value,
+	    cudaStream_t stream
+	);
+	cudaError_t cudaTensorMeanBGR(
+	    void* input,
+	    imageFormat format,
+	    size_t inputWidth,
+	    size_t inputHeight,
+	    float* output,
+	    size_t outputWidth,
+	    size_t outputHeight,
+	    const float3& mean_value,
+	    cudaStream_t stream
+	);
 
-/*
- * Downsample and apply mean pixel subtraction, NCHW format
- */
-cudaError_t cudaTensorMeanRGB( void* input, imageFormat format, size_t inputWidth, size_t inputHeight, float* output, size_t outputWidth, size_t outputHeight, const float3& mean_value, cudaStream_t stream );
-cudaError_t cudaTensorMeanBGR( void* input, imageFormat format, size_t inputWidth, size_t inputHeight, float* output, size_t outputWidth, size_t outputHeight, const float3& mean_value, cudaStream_t stream );
+	/*
+	 * Downsample and apply pixel normalization, NCHW format
+	 */
+	cudaError_t cudaTensorNormRGB(
+	    void* input,
+	    imageFormat format,
+	    size_t inputWidth,
+	    size_t inputHeight,
+	    float* output,
+	    size_t outputWidth,
+	    size_t outputHeight,
+	    const float2& range,
+	    cudaStream_t stream
+	);
+	cudaError_t cudaTensorNormBGR(
+	    void* input,
+	    imageFormat format,
+	    size_t inputWidth,
+	    size_t inputHeight,
+	    float* output,
+	    size_t outputWidth,
+	    size_t outputHeight,
+	    const float2& range,
+	    cudaStream_t stream
+	);
 
-/*
- * Downsample and apply pixel normalization, NCHW format
- */
-cudaError_t cudaTensorNormRGB( void* input, imageFormat format, size_t inputWidth, size_t inputHeight, float* output, size_t outputWidth, size_t outputHeight, const float2& range, cudaStream_t stream );
-cudaError_t cudaTensorNormBGR( void* input, imageFormat format, size_t inputWidth, size_t inputHeight, float* output, size_t outputWidth, size_t outputHeight, const float2& range, cudaStream_t stream );
-
-/*
- * Downsample and apply pixel normalization, mean pixel subtraction and standard deviation, NCHW format
- */
-cudaError_t cudaTensorNormMeanRGB( void* input, imageFormat format, size_t inputWidth, size_t inputHeight, float* output, size_t outputWidth, size_t outputHeight, const float2& range, const float3& mean, const float3& stdDev, cudaStream_t stream, size_t channelStride=0 );
-cudaError_t cudaTensorNormMeanBGR( void* input, imageFormat format, size_t inputWidth, size_t inputHeight, float* output, size_t outputWidth, size_t outputHeight, const float2& range, const float3& mean, const float3& stdDev, cudaStream_t stream, size_t channelStride=0 );
-
+	/*
+	 * Downsample and apply pixel normalization, mean pixel subtraction and standard deviation, NCHW
+	 * format
+	 */
+	cudaError_t cudaTensorNormMeanRGB(
+	    void* input,
+	    imageFormat format,
+	    size_t inputWidth,
+	    size_t inputHeight,
+	    float* output,
+	    size_t outputWidth,
+	    size_t outputHeight,
+	    const float2& range,
+	    const float3& mean,
+	    const float3& stdDev,
+	    cudaStream_t stream,
+	    size_t channelStride = 0
+	);
+	cudaError_t cudaTensorNormMeanBGR(
+	    void* input,
+	    imageFormat format,
+	    size_t inputWidth,
+	    size_t inputHeight,
+	    float* output,
+	    size_t outputWidth,
+	    size_t outputHeight,
+	    const float2& range,
+	    const float3& mean,
+	    const float3& stdDev,
+	    cudaStream_t stream,
+	    size_t channelStride = 0
+	);
 
 #endif
-

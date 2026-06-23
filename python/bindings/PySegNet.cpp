@@ -28,79 +28,94 @@
 
 #include "../../utils/python/bindings/PyCUDA.h"
 
-
 typedef struct {
 	PyTensorNet_Object base;
-	segNet* net;	// object instance
+	segNet* net;  // object instance
 } PySegNet_Object;
 
-
-#define DOC_SEGNET   "Semantic Segmentation DNN - segments an image with per-pixel classification\n\n" \
-				 "Examples (jetson-inference/python/examples)\n" \
-                     "     segnet-console.py\n" \
-				 "     segnet-camera.py\n\n" \
-				 "__init__(...)\n" \
-				 "     Loads an semantic segmentation model.\n\n" \
-				 "     Parameters:\n" \
-				 "       network (string) -- name of a built-in network to use,\n" \
-				 "                           see below for available options.\n\n" \
-				 "       argv (strings) -- command line arguments passed to segNet,\n" \
-				 "                         see below for available options.\n\n" \
-				 "     Extended parameters for loading custom models:\n" \
-				 "       model (string) -- path to self-trained ONNX model to load.\n\n" \
-				 "       labels (string) -- path to labels.txt file (optional)\n\n" \
-				 "       colors (string) -- path to colors.txt file (optional)\n\n" \
-				 "       input_blob (string) -- name of the input layer of the model.\n\n" \
-				 "       output_blob (string) -- name of the output layer of the model.\n\n" \
- 				 SEGNET_USAGE_STRING
+#define DOC_SEGNET                                                                                 \
+	"Semantic Segmentation DNN - segments an image with per-pixel classification\n\n"              \
+	"Examples (jetson-inference/python/examples)\n"                                                \
+	"     segnet-console.py\n"                                                                     \
+	"     segnet-camera.py\n\n"                                                                    \
+	"__init__(...)\n"                                                                              \
+	"     Loads an semantic segmentation model.\n\n"                                               \
+	"     Parameters:\n"                                                                           \
+	"       network (string) -- name of a built-in network to use,\n"                              \
+	"                           see below for available options.\n\n"                              \
+	"       argv (strings) -- command line arguments passed to segNet,\n"                          \
+	"                         see below for available options.\n\n"                                \
+	"     Extended parameters for loading custom models:\n"                                        \
+	"       model (string) -- path to self-trained ONNX model to load.\n\n"                        \
+	"       labels (string) -- path to labels.txt file (optional)\n\n"                             \
+	"       colors (string) -- path to colors.txt file (optional)\n\n"                             \
+	"       input_blob (string) -- name of the input layer of the model.\n\n"                      \
+	"       output_blob (string) -- name of the output layer of the "                              \
+	"model.\n\n" SEGNET_USAGE_STRING
 
 // Init
-static int PySegNet_Init( PySegNet_Object* self, PyObject *args, PyObject *kwds )
-{
+static int PySegNet_Init(PySegNet_Object* self, PyObject* args, PyObject* kwds) {
 	LogDebug(LOG_PY_INFERENCE "PySegNet_Init()\n");
 
 	// parse arguments
 	PyObject* argList = NULL;
-	
-	const char* network     = "fcn-resnet18-pascal-voc";
-	const char* model       = NULL;
-	const char* labels      = NULL;
-	const char* colors      = NULL;
-	const char* input_blob  = SEGNET_DEFAULT_INPUT;
-	const char* output_blob = SEGNET_DEFAULT_OUTPUT;
-	
-	static char* kwlist[] = {"network", "argv", "model", "labels", "colors", "input_blob", "output_blob", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|sOsssss", kwlist, &network, &argList, &model, &labels, &colors, &input_blob, &output_blob))
+	const char* network = "fcn-resnet18-pascal-voc";
+	const char* model = NULL;
+	const char* labels = NULL;
+	const char* colors = NULL;
+	const char* input_blob = SEGNET_DEFAULT_INPUT;
+	const char* output_blob = SEGNET_DEFAULT_OUTPUT;
+
+	static char* kwlist[] =
+	    {"network", "argv", "model", "labels", "colors", "input_blob", "output_blob", NULL};
+
+	if (!PyArg_ParseTupleAndKeywords(
+	        args,
+	        kwds,
+	        "|sOsssss",
+	        kwlist,
+	        &network,
+	        &argList,
+	        &model,
+	        &labels,
+	        &colors,
+	        &input_blob,
+	        &output_blob
+	    ))
 		return -1;
 
 	// determine whether to use argv or built-in network
-	if( argList != NULL && PyList_Check(argList) && PyList_Size(argList) > 0 )
-	{
+	if (argList != NULL && PyList_Check(argList) && PyList_Size(argList) > 0) {
 		// parse the python list into char**
 		const size_t argc = PyList_Size(argList);
 
-		if( argc == 0 )
-		{
-			PyErr_SetString(PyExc_Exception, LOG_PY_INFERENCE "segNet.__init()__ argv list was empty");
+		if (argc == 0) {
+			PyErr_SetString(
+			    PyExc_Exception,
+			    LOG_PY_INFERENCE "segNet.__init()__ argv list was empty"
+			);
 			return -1;
 		}
 
 		char** argv = (char**)malloc(sizeof(char*) * argc);
 
-		if( !argv )
-		{
-			PyErr_SetString(PyExc_MemoryError, LOG_PY_INFERENCE "segNet.__init()__ failed to malloc memory for argv list");
+		if (!argv) {
+			PyErr_SetString(
+			    PyExc_MemoryError,
+			    LOG_PY_INFERENCE "segNet.__init()__ failed to malloc memory for argv list"
+			);
 			return -1;
 		}
 
-		for( size_t n=0; n < argc; n++ )
-		{
+		for (size_t n = 0; n < argc; n++) {
 			PyObject* item = PyList_GetItem(argList, n);
-			
-			if( !PyArg_Parse(item, "s", &argv[n]) )
-			{
-				PyErr_SetString(PyExc_Exception, LOG_PY_INFERENCE "segNet.__init()__ failed to parse argv list");
+
+			if (!PyArg_Parse(item, "s", &argv[n])) {
+				PyErr_SetString(
+				    PyExc_Exception,
+				    LOG_PY_INFERENCE "segNet.__init()__ failed to parse argv list"
+				);
 				return -1;
 			}
 
@@ -108,23 +123,25 @@ static int PySegNet_Init( PySegNet_Object* self, PyObject *args, PyObject *kwds 
 		}
 
 		// load the network using (argc, argv)
-		Py_BEGIN_ALLOW_THREADS
-		self->net = segNet::Create(argc, argv);
+		Py_BEGIN_ALLOW_THREADS self->net = segNet::Create(argc, argv);
 		Py_END_ALLOW_THREADS
-		
-		// free the arguments array
-		free(argv);
-	}
-	else
-	{
-		Py_BEGIN_ALLOW_THREADS
-		self->net = segNet::Create(NULL, model != NULL ? model : network, labels, colors, input_blob, output_blob);
+
+		    // free the arguments array
+		    free(argv);
+	} else {
+		Py_BEGIN_ALLOW_THREADS self->net = segNet::Create(
+		    NULL,
+		    model != NULL ? model : network,
+		    labels,
+		    colors,
+		    input_blob,
+		    output_blob
+		);
 		Py_END_ALLOW_THREADS
 	}
-	
+
 	// confirm the network loaded
-	if( !self->net )
-	{
+	if (!self->net) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_INFERENCE "segNet failed to load network");
 		return -1;
 	}
@@ -133,10 +150,8 @@ static int PySegNet_Init( PySegNet_Object* self, PyObject *args, PyObject *kwds 
 	return 0;
 }
 
-
 // Deallocate
-static void PySegNet_Dealloc( PySegNet_Object* self )
-{
+static void PySegNet_Dealloc(PySegNet_Object* self) {
 	LogDebug(LOG_PY_INFERENCE "PySegNet_Dealloc()\n");
 
 	// free the network
@@ -146,25 +161,24 @@ static void PySegNet_Dealloc( PySegNet_Object* self )
 	Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
-
-#define DOC_PROCESS  "Perform the initial inferencing processing of the segmentation.\n" \
-                     "The results can then be visualized using the Overlay() and Mask() functions.\n\n" \
-				 "Parameters:\n" \
-				 "  image  (capsule) -- CUDA memory capsule\n" \
-				 "  width  (int) -- width of the image (in pixels)\n" \
-				 "  height (int) -- height of the image (in pixels)\n" \
-				 "  ignore_class (string) -- optional label name of class to ignore in the classification (default: 'void')\n" \
-				 "Returns:  (none)"
+#define DOC_PROCESS                                                                                \
+	"Perform the initial inferencing processing of the segmentation.\n"                            \
+	"The results can then be visualized using the Overlay() and Mask() functions.\n\n"             \
+	"Parameters:\n"                                                                                \
+	"  image  (capsule) -- CUDA memory capsule\n"                                                  \
+	"  width  (int) -- width of the image (in pixels)\n"                                           \
+	"  height (int) -- height of the image (in pixels)\n"                                          \
+	"  ignore_class (string) -- optional label name of class to ignore in the classification "     \
+	"(default: 'void')\n"                                                                          \
+	"Returns:  (none)"
 
 // Process
-static PyObject* PySegNet_Process( PySegNet_Object* self, PyObject* args, PyObject *kwds )
-{
-	if( !self || !self->net )
-	{
+static PyObject* PySegNet_Process(PySegNet_Object* self, PyObject* args, PyObject* kwds) {
+	if (!self || !self->net) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_INFERENCE "segNet invalid object instance");
 		return NULL;
 	}
-	
+
 	// parse arguments
 	PyObject* capsule = NULL;
 
@@ -176,9 +190,21 @@ static PyObject* PySegNet_Process( PySegNet_Object* self, PyObject* args, PyObje
 
 	static char* kwlist[] = {"image", "width", "height", "ignore_class", "format", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O|iiss", kwlist, &capsule, &width, &height, &ignore_class, &format_str))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_INFERENCE "segNet.Process() failed to parse args tuple");
+	if (!PyArg_ParseTupleAndKeywords(
+	        args,
+	        kwds,
+	        "O|iiss",
+	        kwlist,
+	        &capsule,
+	        &width,
+	        &height,
+	        &ignore_class,
+	        &format_str
+	    )) {
+		PyErr_SetString(
+		    PyExc_Exception,
+		    LOG_PY_INFERENCE "segNet.Process() failed to parse args tuple"
+		);
 		return NULL;
 	}
 
@@ -188,42 +214,42 @@ static PyObject* PySegNet_Process( PySegNet_Object* self, PyObject* args, PyObje
 	// get pointer to image data
 	void* ptr = PyCUDA_GetImage(capsule, &width, &height, &format);
 
-	if( !ptr )
+	if (!ptr)
 		return NULL;
 
 	// classify the image
 	bool result = false;
-	Py_BEGIN_ALLOW_THREADS
-	result = self->net->Process(ptr, width, height, format, ignore_class);
+	Py_BEGIN_ALLOW_THREADS result = self->net->Process(ptr, width, height, format, ignore_class);
 	Py_END_ALLOW_THREADS
-	
-	if( !result )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_INFERENCE "segNet.Process() encountered an error segmenting the image");
+
+	    if (!result) {
+		PyErr_SetString(
+		    PyExc_Exception,
+		    LOG_PY_INFERENCE "segNet.Process() encountered an error segmenting the image"
+		);
 		return NULL;
 	}
 
 	Py_RETURN_NONE;
 }
 
-
-#define DOC_OVERLAY  "Produce the segmentation overlay alpha blended on top of the original image.\n\n" \
-				 "Parameters:\n" \
-				 "  image  (capsule) -- output CUDA memory capsule\n" \
-				 "  width  (int) -- width of the image (in pixels)\n" \
-				 "  height (int) -- height of the image (in pixels)\n" \
-				 "  filter_mode (string) -- optional string indicating the filter mode, 'point' or 'linear' (default: 'linear')\n" \
-				 "Returns:  (none)"
+#define DOC_OVERLAY                                                                                \
+	"Produce the segmentation overlay alpha blended on top of the original image.\n\n"             \
+	"Parameters:\n"                                                                                \
+	"  image  (capsule) -- output CUDA memory capsule\n"                                           \
+	"  width  (int) -- width of the image (in pixels)\n"                                           \
+	"  height (int) -- height of the image (in pixels)\n"                                          \
+	"  filter_mode (string) -- optional string indicating the filter mode, 'point' or 'linear' "   \
+	"(default: 'linear')\n"                                                                        \
+	"Returns:  (none)"
 
 // Overlay
-static PyObject* PySegNet_Overlay( PySegNet_Object* self, PyObject* args, PyObject *kwds )
-{
-	if( !self || !self->net )
-	{
+static PyObject* PySegNet_Overlay(PySegNet_Object* self, PyObject* args, PyObject* kwds) {
+	if (!self || !self->net) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_INFERENCE "segNet invalid object instance");
 		return NULL;
 	}
-	
+
 	// parse arguments
 	PyObject* capsule = NULL;
 
@@ -235,19 +261,31 @@ static PyObject* PySegNet_Overlay( PySegNet_Object* self, PyObject* args, PyObje
 
 	static char* kwlist[] = {"image", "width", "height", "filter_mode", "format", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O|iiss", kwlist, &capsule, &width, &height, &filter_str, &format_str))
+	if (!PyArg_ParseTupleAndKeywords(
+	        args,
+	        kwds,
+	        "O|iiss",
+	        kwlist,
+	        &capsule,
+	        &width,
+	        &height,
+	        &filter_str,
+	        &format_str
+	    ))
 		return NULL;
 
 	// verify filter mode
 	segNet::FilterMode filterMode;
 
-	if( strcmp(filter_str, "linear") == 0 )
+	if (strcmp(filter_str, "linear") == 0)
 		filterMode = segNet::FILTER_LINEAR;
-	else if( strcmp(filter_str, "point") == 0 )
+	else if (strcmp(filter_str, "point") == 0)
 		filterMode = segNet::FILTER_POINT;
-	else
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_INFERENCE "segNet.Overlay() invalid filter_mode parameter");
+	else {
+		PyErr_SetString(
+		    PyExc_Exception,
+		    LOG_PY_INFERENCE "segNet.Overlay() invalid filter_mode parameter"
+		);
 		return NULL;
 	}
 
@@ -257,42 +295,42 @@ static PyObject* PySegNet_Overlay( PySegNet_Object* self, PyObject* args, PyObje
 	// get pointer to image data
 	void* ptr = PyCUDA_GetImage(capsule, &width, &height, &format);
 
-	if( !ptr )
+	if (!ptr)
 		return NULL;
 
 	// visualize the image
 	bool result = false;
-	Py_BEGIN_ALLOW_THREADS
-	result = self->net->Overlay(ptr, width, height, format, filterMode);
+	Py_BEGIN_ALLOW_THREADS result = self->net->Overlay(ptr, width, height, format, filterMode);
 	Py_END_ALLOW_THREADS
-	
-	if( !result )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_INFERENCE "segNet.Overlay() encountered an error segmenting the image");
+
+	    if (!result) {
+		PyErr_SetString(
+		    PyExc_Exception,
+		    LOG_PY_INFERENCE "segNet.Overlay() encountered an error segmenting the image"
+		);
 		return NULL;
 	}
-	
+
 	Py_RETURN_NONE;
 }
 
-
-#define DOC_MASK     "Produce a colorized RGBA segmentation mask of the output.\n\n" \
-				 "Parameters:\n" \
-				 "  image  (capsule) -- output CUDA memory capsule\n" \
-				 "  width  (int) -- width of the image (in pixels)\n" \
-				 "  height (int) -- height of the image (in pixels)\n" \
-				 "  filter_mode (string) -- optional string indicating the filter mode, 'point' or 'linear' (default: 'linear')\n" \
-				 "Returns:  (none)"
+#define DOC_MASK                                                                                   \
+	"Produce a colorized RGBA segmentation mask of the output.\n\n"                                \
+	"Parameters:\n"                                                                                \
+	"  image  (capsule) -- output CUDA memory capsule\n"                                           \
+	"  width  (int) -- width of the image (in pixels)\n"                                           \
+	"  height (int) -- height of the image (in pixels)\n"                                          \
+	"  filter_mode (string) -- optional string indicating the filter mode, 'point' or 'linear' "   \
+	"(default: 'linear')\n"                                                                        \
+	"Returns:  (none)"
 
 // Overlay
-static PyObject* PySegNet_Mask( PySegNet_Object* self, PyObject* args, PyObject *kwds )
-{
-	if( !self || !self->net )
-	{
+static PyObject* PySegNet_Mask(PySegNet_Object* self, PyObject* args, PyObject* kwds) {
+	if (!self || !self->net) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_INFERENCE "segNet invalid object instance");
 		return NULL;
 	}
-	
+
 	// parse arguments
 	PyObject* capsule = NULL;
 
@@ -304,19 +342,31 @@ static PyObject* PySegNet_Mask( PySegNet_Object* self, PyObject* args, PyObject 
 
 	static char* kwlist[] = {"image", "width", "height", "filter_mode", "format", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O|iiss", kwlist, &capsule, &width, &height, &filter_str, &format_str))
+	if (!PyArg_ParseTupleAndKeywords(
+	        args,
+	        kwds,
+	        "O|iiss",
+	        kwlist,
+	        &capsule,
+	        &width,
+	        &height,
+	        &filter_str,
+	        &format_str
+	    ))
 		return NULL;
 
 	// verify filter mode
 	segNet::FilterMode filterMode;
 
-	if( strcmp(filter_str, "linear") == 0 )
+	if (strcmp(filter_str, "linear") == 0)
 		filterMode = segNet::FILTER_LINEAR;
-	else if( strcmp(filter_str, "point") == 0 )
+	else if (strcmp(filter_str, "point") == 0)
 		filterMode = segNet::FILTER_POINT;
-	else
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_INFERENCE "segNet.Mask() invalid filter_mode parameter");
+	else {
+		PyErr_SetString(
+		    PyExc_Exception,
+		    LOG_PY_INFERENCE "segNet.Mask() invalid filter_mode parameter"
+		);
 		return NULL;
 	}
 
@@ -326,64 +376,60 @@ static PyObject* PySegNet_Mask( PySegNet_Object* self, PyObject* args, PyObject 
 	// get pointer to image data
 	void* ptr = PyCUDA_GetImage(capsule, &width, &height, &format);
 
-	if( !ptr )
+	if (!ptr)
 		return NULL;
 
 	bool result = false;
 	Py_BEGIN_ALLOW_THREADS
-	
-	if( format == IMAGE_GRAY8 )
-	{
+
+	    if (format == IMAGE_GRAY8) {
 		// class binary mask
 		result = self->net->Mask((uint8_t*)ptr, width, height);
 	}
-	else
-	{
+	else {
 		// colorized mask
-		result = self->net->Mask(ptr, width, height, format, filterMode);		
+		result = self->net->Mask(ptr, width, height, format, filterMode);
 	}
-	
+
 	Py_END_ALLOW_THREADS
-	
-	if( !result )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_INFERENCE "segNet.Mask() encountered an error generating the segmentation mask");
+
+	    if (!result) {
+		PyErr_SetString(
+		    PyExc_Exception,
+		    LOG_PY_INFERENCE "segNet.Mask() encountered an error generating the segmentation mask"
+		);
 		return NULL;
 	}
 
 	Py_RETURN_NONE;
 }
 
-
-#define DOC_GET_NETWORK_NAME "Return the name of the built-in network used by the model.\n\n" \
-					    "Parameters:  (none)\n\n" \
-					    "Returns:\n" \
-					    "  (string) -- name of the network (e.g. 'FCN_ResNet18', 'FCN_Alexnet')\n" \
-					    "              or 'custom' if using a custom-loaded model"
+#define DOC_GET_NETWORK_NAME                                                                       \
+	"Return the name of the built-in network used by the model.\n\n"                               \
+	"Parameters:  (none)\n\n"                                                                      \
+	"Returns:\n"                                                                                   \
+	"  (string) -- name of the network (e.g. 'FCN_ResNet18', 'FCN_Alexnet')\n"                     \
+	"              or 'custom' if using a custom-loaded model"
 
 // GetNetworkName
-static PyObject* PySegNet_GetNetworkName( PySegNet_Object* self )
-{
-	if( !self || !self->net )
-	{
+static PyObject* PySegNet_GetNetworkName(PySegNet_Object* self) {
+	if (!self || !self->net) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_INFERENCE "segNet invalid object instance");
 		return NULL;
 	}
-	
+
 	return Py_BuildValue("s", self->net->GetNetworkName());
 }
 
-
-#define DOC_GET_NUM_CLASSES "Return the number of object classes that this network model is able to classify.\n\n" \
-				 	   "Parameters:  (none)\n\n" \
-					   "Returns:\n" \
-					   "  (int) -- number of object classes that the model supports"
+#define DOC_GET_NUM_CLASSES                                                                        \
+	"Return the number of object classes that this network model is able to classify.\n\n"         \
+	"Parameters:  (none)\n\n"                                                                      \
+	"Returns:\n"                                                                                   \
+	"  (int) -- number of object classes that the model supports"
 
 // GetNumClasses
-static PyObject* PySegNet_GetNumClasses( PySegNet_Object* self )
-{
-	if( !self || !self->net )
-	{
+static PyObject* PySegNet_GetNumClasses(PySegNet_Object* self) {
+	if (!self || !self->net) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_INFERENCE "segNet invalid object instance");
 		return NULL;
 	}
@@ -391,126 +437,125 @@ static PyObject* PySegNet_GetNumClasses( PySegNet_Object* self )
 	return PYLONG_FROM_UNSIGNED_LONG(self->net->GetNumClasses());
 }
 
-
-#define DOC_GET_CLASS_DESC "Return the class description for the given object class.\n\n" \
-				 	  "Parameters:\n" \
-					  "  (int) -- index of the class, between [0, GetNumClasses()]\n\n" \
-					  "Returns:\n" \
-					  "  (string) -- the text description of the object class"
+#define DOC_GET_CLASS_DESC                                                                         \
+	"Return the class description for the given object class.\n\n"                                 \
+	"Parameters:\n"                                                                                \
+	"  (int) -- index of the class, between [0, GetNumClasses()]\n\n"                              \
+	"Returns:\n"                                                                                   \
+	"  (string) -- the text description of the object class"
 
 // GetClassDesc
-PyObject* PySegNet_GetClassDesc( PySegNet_Object* self, PyObject* args )
-{
-	if( !self || !self->net )
-	{
+PyObject* PySegNet_GetClassDesc(PySegNet_Object* self, PyObject* args) {
+	if (!self || !self->net) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_INFERENCE "segNet invalid object instance");
 		return NULL;
 	}
-	
+
 	int classIdx = 0;
 
-	if( !PyArg_ParseTuple(args, "i", &classIdx) )
+	if (!PyArg_ParseTuple(args, "i", &classIdx))
 		return NULL;
 
-	if( classIdx < 0 || classIdx >= self->net->GetNumClasses() )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_INFERENCE "segNet requested class index is out of bounds");
+	if (classIdx < 0 || classIdx >= self->net->GetNumClasses()) {
+		PyErr_SetString(
+		    PyExc_Exception,
+		    LOG_PY_INFERENCE "segNet requested class index is out of bounds"
+		);
 		return NULL;
 	}
 
 	return Py_BuildValue("s", self->net->GetClassDesc(classIdx));
 }
 
-
-#define DOC_GET_CLASS_COLOR "Return the class color for the given object class.\n\n" \
-				 	   "Parameters:\n" \
-					   "  (int) -- index of the class, between [0, GetNumClasses()]\n\n" \
-					   "Returns:\n" \
-					   "  (r,g,b,a) tuple -- tuple containing the RGBA color of the object class"
+#define DOC_GET_CLASS_COLOR                                                                        \
+	"Return the class color for the given object class.\n\n"                                       \
+	"Parameters:\n"                                                                                \
+	"  (int) -- index of the class, between [0, GetNumClasses()]\n\n"                              \
+	"Returns:\n"                                                                                   \
+	"  (r,g,b,a) tuple -- tuple containing the RGBA color of the object class"
 
 // GetClassColor
-PyObject* PySegNet_GetClassColor( PySegNet_Object* self, PyObject* args )
-{
-	if( !self || !self->net )
-	{
+PyObject* PySegNet_GetClassColor(PySegNet_Object* self, PyObject* args) {
+	if (!self || !self->net) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_INFERENCE "segNet invalid object instance");
 		return NULL;
 	}
-	
+
 	int classIdx = 0;
 
-	if( !PyArg_ParseTuple(args, "i", &classIdx) )
+	if (!PyArg_ParseTuple(args, "i", &classIdx))
 		return NULL;
 
-	if( classIdx < 0 || classIdx >= self->net->GetNumClasses() )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_INFERENCE "segNet requested class index is out of bounds");
+	if (classIdx < 0 || classIdx >= self->net->GetNumClasses()) {
+		PyErr_SetString(
+		    PyExc_Exception,
+		    LOG_PY_INFERENCE "segNet requested class index is out of bounds"
+		);
 		return NULL;
 	}
 
 	const float4 color = self->net->GetClassColor(classIdx);
-	
+
 	// create tuple objects
 	PyObject* r = PyFloat_FromDouble(color.x);
 	PyObject* g = PyFloat_FromDouble(color.y);
 	PyObject* b = PyFloat_FromDouble(color.z);
 	PyObject* a = PyFloat_FromDouble(color.w);
-	
+
 	PyObject* tuple = PyTuple_Pack(4, r, g, b, a);
 
 	Py_DECREF(r);
 	Py_DECREF(g);
 	Py_DECREF(b);
 	Py_DECREF(a);
-	
+
 	return tuple;
 }
 
-
-#define DOC_GET_OVERLAY_ALPHA "Return the overlay alpha blending value for classes that don't have it explicitly set.\n\n" \
-				 	     "Parameters: (none)\n\n" \
-					     "Returns:\n" \
-					     "  (float) -- alpha blending value between [0,255]"
+#define DOC_GET_OVERLAY_ALPHA                                                                      \
+	"Return the overlay alpha blending value for classes that don't have it explicitly set.\n\n"   \
+	"Parameters: (none)\n\n"                                                                       \
+	"Returns:\n"                                                                                   \
+	"  (float) -- alpha blending value between [0,255]"
 
 // GetOverlayAlpha
-PyObject* PySegNet_GetOverlayAlpha( PySegNet_Object* self )
-{
-	if( !self || !self->net )
-	{
+PyObject* PySegNet_GetOverlayAlpha(PySegNet_Object* self) {
+	if (!self || !self->net) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_INFERENCE "segNet invalid object instance");
 		return NULL;
 	}
-	
+
 	return PyFloat_FromDouble(self->net->GetOverlayAlpha());
 }
 
-
-#define DOC_SET_OVERLAY_ALPHA "Set the alpha blending value used during overlay visualization for all classes\n\n" \
-				 	  "Parameters:\n" \
-					  "  alpha (float) -- desired alpha value, between 0.0 and 255.0\n" \
-					  "  explicit_exempt (optional, bool) -- if True, the global alpha doesn't apply to classes that have an alpha value explicitly set in the colors file (default: True)\n" \
-					  "Returns:  (none)"
+#define DOC_SET_OVERLAY_ALPHA                                                                      \
+	"Set the alpha blending value used during overlay visualization for all classes\n\n"           \
+	"Parameters:\n"                                                                                \
+	"  alpha (float) -- desired alpha value, between 0.0 and 255.0\n"                              \
+	"  explicit_exempt (optional, bool) -- if True, the global alpha doesn't apply to classes "    \
+	"that have an alpha value explicitly set in the colors file (default: True)\n"                 \
+	"Returns:  (none)"
 
 // SetOverlayAlpha
-PyObject* PySegNet_SetOverlayAlpha( PySegNet_Object* self, PyObject* args, PyObject *kwds )
-{
-	if( !self || !self->net )
-	{
+PyObject* PySegNet_SetOverlayAlpha(PySegNet_Object* self, PyObject* args, PyObject* kwds) {
+	if (!self || !self->net) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_INFERENCE "segNet invalid object instance");
 		return NULL;
 	}
-	
+
 	float alpha = 0.0f;
 	int exempt = 1;
 
 	static char* kwlist[] = {"alpha", "explicit_exempt", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "f|i", kwlist, &alpha, &exempt) )
+	if (!PyArg_ParseTupleAndKeywords(args, kwds, "f|i", kwlist, &alpha, &exempt))
 		return NULL;
-		
-	if( alpha < 0.0f || alpha > 255.0f )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_INFERENCE "segNet.SetOverlayAlpha() -- provided alpha value is out-of-range");
+
+	if (alpha < 0.0f || alpha > 255.0f) {
+		PyErr_SetString(
+		    PyExc_Exception,
+		    LOG_PY_INFERENCE "segNet.SetOverlayAlpha() -- provided alpha value is out-of-range"
+		);
 		return NULL;
 	}
 
@@ -521,20 +566,18 @@ PyObject* PySegNet_SetOverlayAlpha( PySegNet_Object* self, PyObject* args, PyObj
 	Py_RETURN_NONE;
 }
 
-
-#define DOC_GET_GRID_WIDTH  "Return the number of columns in the segmentation mask classification grid.\n" \
-				 	   "These are the raw dimensions, they are typically smaller than the image size.\n" \
-					   "In segNet.Mask() the classification grid gets upscaled to match the image size,\n" \
-					   "but this function returns the original unscaled size of the grid.\n\n" \
-					   "Parameters:  (none)\n\n" \
-					   "Returns:\n" \
-					   "  (int) -- width of the segmentation mask's classification grid" \
+#define DOC_GET_GRID_WIDTH                                                                         \
+	"Return the number of columns in the segmentation mask classification grid.\n"                 \
+	"These are the raw dimensions, they are typically smaller than the image size.\n"              \
+	"In segNet.Mask() the classification grid gets upscaled to match the image size,\n"            \
+	"but this function returns the original unscaled size of the grid.\n\n"                        \
+	"Parameters:  (none)\n\n"                                                                      \
+	"Returns:\n"                                                                                   \
+	"  (int) -- width of the segmentation mask's classification grid"
 
 // GetGridWidth
-static PyObject* PySegNet_GetGridWidth( PySegNet_Object* self )
-{
-	if( !self || !self->net )
-	{
+static PyObject* PySegNet_GetGridWidth(PySegNet_Object* self) {
+	if (!self || !self->net) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_INFERENCE "segNet invalid object instance");
 		return NULL;
 	}
@@ -542,20 +585,18 @@ static PyObject* PySegNet_GetGridWidth( PySegNet_Object* self )
 	return PYLONG_FROM_UNSIGNED_LONG(self->net->GetGridWidth());
 }
 
-
-#define DOC_GET_GRID_HEIGHT "Return the number of rows in the segmentation mask classification grid.\n" \
-					   "These are the raw dimensions, they are typically smaller than the image size.\n" \
-					   "In segNet.Mask() the classification grid gets upscaled to match the image size,\n" \
-					   "but this function returns the original unscaled size of the grid.\n\n" \
-				 	   "Parameters:  (none)\n\n" \
-					   "Returns:\n" \
-					   "  (int) -- height of the segmentation mask's classification grid" \
+#define DOC_GET_GRID_HEIGHT                                                                        \
+	"Return the number of rows in the segmentation mask classification grid.\n"                    \
+	"These are the raw dimensions, they are typically smaller than the image size.\n"              \
+	"In segNet.Mask() the classification grid gets upscaled to match the image size,\n"            \
+	"but this function returns the original unscaled size of the grid.\n\n"                        \
+	"Parameters:  (none)\n\n"                                                                      \
+	"Returns:\n"                                                                                   \
+	"  (int) -- height of the segmentation mask's classification grid"
 
 // GetGridHeight
-static PyObject* PySegNet_GetGridHeight( PySegNet_Object* self )
-{
-	if( !self || !self->net )
-	{
+static PyObject* PySegNet_GetGridHeight(PySegNet_Object* self) {
+	if (!self || !self->net) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_INFERENCE "segNet invalid object instance");
 		return NULL;
 	}
@@ -563,24 +604,25 @@ static PyObject* PySegNet_GetGridHeight( PySegNet_Object* self )
 	return PYLONG_FROM_UNSIGNED_LONG(self->net->GetGridHeight());
 }
 
-#define DOC_GET_GRID_SIZE   "Return a (width, height) tuple with the dimensions of the segmentation mask classification grid.\n" \
-					   "These are the raw dimensions, they are typically smaller than the image size.\n" \
-					   "In segNet.Mask() the classification grid gets upscaled to match the image size,\n" \
-					   "but this function returns the original unscaled size of the grid.\n\n" \
-				 	   "Parameters:  (none)\n\n" \
-					   "Returns:\n" \
-					   "  (int, int) -- tuple containing the width and height of the segmentation mask's classification grid" \
+#define DOC_GET_GRID_SIZE                                                                          \
+	"Return a (width, height) tuple with the dimensions of the segmentation mask classification "  \
+	"grid.\n"                                                                                      \
+	"These are the raw dimensions, they are typically smaller than the image size.\n"              \
+	"In segNet.Mask() the classification grid gets upscaled to match the image size,\n"            \
+	"but this function returns the original unscaled size of the grid.\n\n"                        \
+	"Parameters:  (none)\n\n"                                                                      \
+	"Returns:\n"                                                                                   \
+	"  (int, int) -- tuple containing the width and height of the segmentation mask's "            \
+	"classification grid"
 
 // GetGridSize
-static PyObject* PySegNet_GetGridSize( PySegNet_Object* self )
-{
-	if( !self || !self->net )
-	{
+static PyObject* PySegNet_GetGridSize(PySegNet_Object* self) {
+	if (!self || !self->net) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_INFERENCE "segNet invalid object instance");
 		return NULL;
 	}
 
-	PyObject* pyWidth  = PYLONG_FROM_LONG(self->net->GetGridWidth());
+	PyObject* pyWidth = PYLONG_FROM_LONG(self->net->GetGridWidth());
 	PyObject* pyHeight = PYLONG_FROM_LONG(self->net->GetGridHeight());
 
 	PyObject* tuple = PyTuple_Pack(2, pyWidth, pyHeight);
@@ -591,71 +633,67 @@ static PyObject* PySegNet_GetGridSize( PySegNet_Object* self )
 	return tuple;
 }
 
-#define DOC_USAGE_STRING     "Return the command line parameters accepted by __init__()\n\n" \
-					    "Parameters:  (none)\n\n" \
-					    "Returns:\n" \
-					    "  (string) -- usage string documenting command-line options\n"
+#define DOC_USAGE_STRING                                                                           \
+	"Return the command line parameters accepted by __init__()\n\n"                                \
+	"Parameters:  (none)\n\n"                                                                      \
+	"Returns:\n"                                                                                   \
+	"  (string) -- usage string documenting command-line options\n"
 
 // Usage
-static PyObject* PySegNet_Usage( PySegNet_Object* self )
-{
+static PyObject* PySegNet_Usage(PySegNet_Object* self) {
 	return Py_BuildValue("s", segNet::Usage());
 }
 
 //-------------------------------------------------------------------------------
-static PyTypeObject PySegNet_Type = 
-{
-    PyVarObject_HEAD_INIT(NULL, 0)
-};
+static PyTypeObject PySegNet_Type = {PyVarObject_HEAD_INIT(NULL, 0)};
 
-static PyMethodDef PySegNet_Methods[] = 
-{
-	{ "Process", (PyCFunction)PySegNet_Process, METH_VARARGS|METH_KEYWORDS, DOC_PROCESS},
-	{ "Overlay", (PyCFunction)PySegNet_Overlay, METH_VARARGS|METH_KEYWORDS, DOC_OVERLAY},
-	{ "Mask", (PyCFunction)PySegNet_Mask, METH_VARARGS|METH_KEYWORDS, DOC_MASK},	
-	{ "GetNetworkName", (PyCFunction)PySegNet_GetNetworkName, METH_NOARGS, DOC_GET_NETWORK_NAME},
-     { "GetNumClasses", (PyCFunction)PySegNet_GetNumClasses, METH_NOARGS, DOC_GET_NUM_CLASSES},
-	{ "GetClassLabel", (PyCFunction)PySegNet_GetClassDesc, METH_VARARGS, DOC_GET_CLASS_DESC},
-	{ "GetClassDesc", (PyCFunction)PySegNet_GetClassDesc, METH_VARARGS, DOC_GET_CLASS_DESC},
-	{ "GetClassColor", (PyCFunction)PySegNet_GetClassColor, METH_VARARGS, DOC_GET_CLASS_COLOR},
-	{ "GetGridWidth", (PyCFunction)PySegNet_GetGridWidth, METH_NOARGS, DOC_GET_GRID_WIDTH},
-	{ "GetGridHeight", (PyCFunction)PySegNet_GetGridHeight, METH_NOARGS, DOC_GET_GRID_HEIGHT},
-	{ "GetGridSize", (PyCFunction)PySegNet_GetGridSize, METH_NOARGS, DOC_GET_GRID_SIZE},
-	{ "GetOverlayAlpha", (PyCFunction)PySegNet_GetOverlayAlpha, METH_NOARGS, DOC_GET_OVERLAY_ALPHA},
-	{ "SetOverlayAlpha", (PyCFunction)PySegNet_SetOverlayAlpha, METH_VARARGS|METH_KEYWORDS, DOC_SET_OVERLAY_ALPHA},
-	{ "Usage", (PyCFunction)PySegNet_Usage, METH_NOARGS|METH_STATIC, DOC_USAGE_STRING},
-	{NULL}  /* Sentinel */
+static PyMethodDef PySegNet_Methods[] = {
+    {"Process", (PyCFunction)PySegNet_Process, METH_VARARGS | METH_KEYWORDS, DOC_PROCESS},
+    {"Overlay", (PyCFunction)PySegNet_Overlay, METH_VARARGS | METH_KEYWORDS, DOC_OVERLAY},
+    {"Mask", (PyCFunction)PySegNet_Mask, METH_VARARGS | METH_KEYWORDS, DOC_MASK},
+    {"GetNetworkName", (PyCFunction)PySegNet_GetNetworkName, METH_NOARGS, DOC_GET_NETWORK_NAME},
+    {"GetNumClasses", (PyCFunction)PySegNet_GetNumClasses, METH_NOARGS, DOC_GET_NUM_CLASSES},
+    {"GetClassLabel", (PyCFunction)PySegNet_GetClassDesc, METH_VARARGS, DOC_GET_CLASS_DESC},
+    {"GetClassDesc", (PyCFunction)PySegNet_GetClassDesc, METH_VARARGS, DOC_GET_CLASS_DESC},
+    {"GetClassColor", (PyCFunction)PySegNet_GetClassColor, METH_VARARGS, DOC_GET_CLASS_COLOR},
+    {"GetGridWidth", (PyCFunction)PySegNet_GetGridWidth, METH_NOARGS, DOC_GET_GRID_WIDTH},
+    {"GetGridHeight", (PyCFunction)PySegNet_GetGridHeight, METH_NOARGS, DOC_GET_GRID_HEIGHT},
+    {"GetGridSize", (PyCFunction)PySegNet_GetGridSize, METH_NOARGS, DOC_GET_GRID_SIZE},
+    {"GetOverlayAlpha", (PyCFunction)PySegNet_GetOverlayAlpha, METH_NOARGS, DOC_GET_OVERLAY_ALPHA},
+    {"SetOverlayAlpha",
+     (PyCFunction)PySegNet_SetOverlayAlpha,
+     METH_VARARGS | METH_KEYWORDS,
+     DOC_SET_OVERLAY_ALPHA},
+    {"Usage", (PyCFunction)PySegNet_Usage, METH_NOARGS | METH_STATIC, DOC_USAGE_STRING},
+    {NULL} /* Sentinel */
 };
 
 // Register type
-bool PySegNet_Register( PyObject* module )
-{
-	if( !module )
+bool PySegNet_Register(PyObject* module) {
+	if (!module)
 		return false;
-	
-	PySegNet_Type.tp_name		= PY_INFERENCE_MODULE_NAME ".segNet";
-	PySegNet_Type.tp_basicsize	= sizeof(PySegNet_Object);
-	PySegNet_Type.tp_flags		= Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
-	PySegNet_Type.tp_base		= PyTensorNet_Type();
-	PySegNet_Type.tp_methods		= PySegNet_Methods;
-	PySegNet_Type.tp_new		= NULL; /*PySegNet_New;*/
-	PySegNet_Type.tp_init		= (initproc)PySegNet_Init;
-	PySegNet_Type.tp_dealloc		= (destructor)PySegNet_Dealloc;
-	PySegNet_Type.tp_doc		= DOC_SEGNET;
-	 
-	if( PyType_Ready(&PySegNet_Type) < 0 )
-	{
+
+	PySegNet_Type.tp_name = PY_INFERENCE_MODULE_NAME ".segNet";
+	PySegNet_Type.tp_basicsize = sizeof(PySegNet_Object);
+	PySegNet_Type.tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
+	PySegNet_Type.tp_base = PyTensorNet_Type();
+	PySegNet_Type.tp_methods = PySegNet_Methods;
+	PySegNet_Type.tp_new = NULL; /*PySegNet_New;*/
+	PySegNet_Type.tp_init = (initproc)PySegNet_Init;
+	PySegNet_Type.tp_dealloc = (destructor)PySegNet_Dealloc;
+	PySegNet_Type.tp_doc = DOC_SEGNET;
+
+	if (PyType_Ready(&PySegNet_Type) < 0) {
 		LogError(LOG_PY_INFERENCE "segNet PyType_Ready() failed\n");
 		return false;
 	}
-	
+
 	Py_INCREF(&PySegNet_Type);
-    
-	if( PyModule_AddObject(module, "segNet", (PyObject*)&PySegNet_Type) < 0 )
-	{
+
+	if (PyModule_AddObject(module, "segNet", (PyObject*)&PySegNet_Type) < 0) {
 		LogError(LOG_PY_INFERENCE "segNet PyModule_AddObject('imageNet') failed\n");
 		return false;
 	}
-	
+
 	return true;
 }

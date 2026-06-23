@@ -27,88 +27,78 @@
 #include <iterator>
 #include <fstream>
 
-
 #if NV_TENSORRT_MAJOR >= 4
 
-//-------------------------------------------------------------------------------------------------
-static inline int volume(nvinfer1::Dims dims)
-{
-    return std::accumulate(dims.d, dims.d + dims.nbDims, 1, std::multiplies<int>());
-}
-//-------------------------------------------------------------------------------------------------
-
-
-// constructor
-randInt8Calibrator::randInt8Calibrator( int totalSamples, std::string cacheFile, const std::map<std::string, nvinfer1::Dims3>& inputDimensions )
-								 : mTotalSamples(totalSamples)
-								 , mCurrentSample(0)
-								 , mCacheFile(cacheFile)
-								 , mInputDimensions(inputDimensions)
-{
-	std::default_random_engine generator;
-	std::uniform_real_distribution<float> distribution(-1.0F, 1.0F);
-
-	for( auto& elem : mInputDimensions )
-	{
-		int elemCount = volume(elem.second);
-
-		std::vector<float> rnd_data(elemCount);
-
-		for( auto& val : rnd_data )
-			val = distribution(generator);
-
-		void* data;
-
-		CUDA(cudaMalloc(&data, elemCount * sizeof(float)));
-		CUDA(cudaMemcpy(data, &rnd_data[0], elemCount * sizeof(float), cudaMemcpyHostToDevice));
-
-		mInputDeviceBuffers.insert(std::make_pair(elem.first, data));
+	//-------------------------------------------------------------------------------------------------
+	static inline int volume(nvinfer1::Dims dims) {
+		return std::accumulate(dims.d, dims.d + dims.nbDims, 1, std::multiplies<int>());
 	}
-}
+	//-------------------------------------------------------------------------------------------------
 
+	// constructor
+	randInt8Calibrator::randInt8Calibrator(
+	    int totalSamples,
+	    std::string cacheFile,
+	    const std::map<std::string, nvinfer1::Dims3>& inputDimensions
+	)
+	    : mTotalSamples(totalSamples), mCurrentSample(0), mCacheFile(cacheFile),
+	      mInputDimensions(inputDimensions) {
+		std::default_random_engine generator;
+		std::uniform_real_distribution<float> distribution(-1.0F, 1.0F);
 
-// destructor
-randInt8Calibrator::~randInt8Calibrator()
-{
-	for( auto& elem : mInputDeviceBuffers )
-		CUDA(cudaFree(elem.second));
-}
+		for (auto& elem : mInputDimensions) {
+			int elemCount = volume(elem.second);
 
+			std::vector<float> rnd_data(elemCount);
 
-// getBatch()
-bool randInt8Calibrator::getBatch( void* bindings[], const char* names[], int nbBindings ) NOEXCEPT
-{
-	if( mCurrentSample >= mTotalSamples )
-		return false;
+			for (auto& val : rnd_data)
+				val = distribution(generator);
 
-	for( int i = 0; i < nbBindings; ++i )
-		bindings[i] = mInputDeviceBuffers[names[i]];
+			void* data;
 
-	++mCurrentSample;
-	return true;
-}
+			CUDA(cudaMalloc(&data, elemCount * sizeof(float)));
+			CUDA(cudaMemcpy(data, &rnd_data[0], elemCount * sizeof(float), cudaMemcpyHostToDevice));
 
+			mInputDeviceBuffers.insert(std::make_pair(elem.first, data));
+		}
+	}
 
-// readCalibrationCache()
-const void* randInt8Calibrator::readCalibrationCache( size_t& length ) NOEXCEPT
-{
-	mCalibrationCache.clear();
-	std::ifstream input(mCacheFile, std::ios::binary);
-	input >> std::noskipws;
+	// destructor
+	randInt8Calibrator::~randInt8Calibrator() {
+		for (auto& elem : mInputDeviceBuffers)
+			CUDA(cudaFree(elem.second));
+	}
 
-	if (input.good())
-		std::copy(std::istream_iterator<char>(input), std::istream_iterator<char>(), std::back_inserter(mCalibrationCache));
+	// getBatch()
+	bool randInt8Calibrator::getBatch(void* bindings[], const char* names[], int nbBindings) NOEXCEPT {
+		if (mCurrentSample >= mTotalSamples)
+			return false;
 
-	length = mCalibrationCache.size();
-	return length ? &mCalibrationCache[0] : nullptr;
-}
+		for (int i = 0; i < nbBindings; ++i)
+			bindings[i] = mInputDeviceBuffers[names[i]];
 
+		++mCurrentSample;
+		return true;
+	}
 
-// writeCalibrationCache()
-void randInt8Calibrator::writeCalibrationCache( const void*, size_t ) NOEXCEPT
-{
+	// readCalibrationCache()
+	const void* randInt8Calibrator::readCalibrationCache(size_t& length) NOEXCEPT {
+		mCalibrationCache.clear();
+		std::ifstream input(mCacheFile, std::ios::binary);
+		input >> std::noskipws;
 
-}
+		if (input.good())
+			std::copy(
+			    std::istream_iterator<char>(input),
+			    std::istream_iterator<char>(),
+			    std::back_inserter(mCalibrationCache)
+			);
+
+		length = mCalibrationCache.size();
+		return length ? &mCalibrationCache[0] : nullptr;
+	}
+
+	// writeCalibrationCache()
+	void randInt8Calibrator::writeCalibrationCache(const void*, size_t) NOEXCEPT {}
 
 #endif
-

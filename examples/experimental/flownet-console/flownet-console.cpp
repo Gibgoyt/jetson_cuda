@@ -26,9 +26,7 @@
 #include "commandLine.h"
 #include "cudaMappedMemory.h"
 
-
-int usage()
-{
+int usage() {
 	printf("usage: flownet-console [-h] [--network NETWORK]\n");
 	printf("                       file_A file_B file_out\n\n");
 	printf("Dense optical flow estimation from image pairs, using flowNet DNN.\n\n");
@@ -46,39 +44,33 @@ int usage()
 	return 0;
 }
 
-int main( int argc, char** argv )
-{
+int main(int argc, char** argv) {
 	/*
 	 * parse command line
 	 */
 	commandLine cmdLine(argc, argv);
 
-	if( cmdLine.GetFlag("help") )
+	if (cmdLine.GetFlag("help"))
 		return usage();
 
-	
 	/*
 	 * parse filename arguments
 	 */
-	const char* imgFilenames[] = { cmdLine.GetPosition(0),
-							 cmdLine.GetPosition(1) };
+	const char* imgFilenames[] = {cmdLine.GetPosition(0), cmdLine.GetPosition(1)};
 
 	const char* outputFilename = cmdLine.GetPosition(2);
 
-	if( !imgFilenames[0] || !imgFilenames[1] || !outputFilename )
-	{
+	if (!imgFilenames[0] || !imgFilenames[1] || !outputFilename) {
 		printf("flownet-console:   two input images and one output image required\n");
 		return usage();
 	}
-
 
 	/*
 	 * create optical flow network
 	 */
 	flowNet* net = flowNet::Create(argc, argv);
 
-	if( !net )
-	{
+	if (!net) {
 		printf("flownet-console:   failed to initialize flowNet\n");
 		return 0;
 	}
@@ -86,79 +78,81 @@ int main( int argc, char** argv )
 	// parse the desired filter mode
 	const cudaFilterMode filterMode = cudaFilterModeFromStr(cmdLine.GetString("filter-mode"));
 
-
 	/*
 	 * load images from disk
 	 */
-	float* imgCPU[]  = { NULL, NULL };
-	float* imgCUDA[] = { NULL, NULL };
-	int    imgWidth  = 0;
-	int    imgHeight = 0;
-		
-	for( int n=0; n < 2; n++ )
-	{
+	float* imgCPU[] = {NULL, NULL};
+	float* imgCUDA[] = {NULL, NULL};
+	int imgWidth = 0;
+	int imgHeight = 0;
+
+	for (int n = 0; n < 2; n++) {
 		int width = 0;
 		int height = 0;
 
 		// load the next image in the sequence
-		if( !loadImageRGBA(imgFilenames[n], (float4**)&imgCPU[n], (float4**)&imgCUDA[n], &width, &height) )
-		{
+		if (!loadImageRGBA(
+		        imgFilenames[n],
+		        (float4**)&imgCPU[n],
+		        (float4**)&imgCUDA[n],
+		        &width,
+		        &height
+		    )) {
 			printf("flownet-console:  failed to load image '%s'\n", imgFilenames[n]);
 			return 0;
 		}
 
 		// make sure the images have the same dimensions
-		if( n == 0 )
-		{
+		if (n == 0) {
 			imgWidth = width;
 			imgHeight = height;
-		}
-		else if( width != imgWidth || height != imgHeight )
-		{
+		} else if (width != imgWidth || height != imgHeight) {
 			printf("flownet-console:  both images must have the same dimensions\n");
 			return 0;
 		}
 	}
 
-
 	/*
 	 * allocate output flow map
 	 */
-	float* flowCPU  = NULL;
+	float* flowCPU = NULL;
 	float* flowCUDA = NULL;
 
-	if( !cudaAllocMapped((void**)&flowCPU, (void**)&flowCUDA, imgWidth * imgHeight * sizeof(float) * 4) )
-	{
-		printf("flownet-console:  failed to allocate CUDA memory for output image (%ix%i)\n", imgWidth, imgHeight);
+	if (!cudaAllocMapped(
+	        (void**)&flowCPU,
+	        (void**)&flowCUDA,
+	        imgWidth * imgHeight * sizeof(float) * 4
+	    )) {
+		printf(
+		    "flownet-console:  failed to allocate CUDA memory for output image (%ix%i)\n",
+		    imgWidth,
+		    imgHeight
+		);
 		return 0;
 	}
-
 
 	/*
 	 * perform the optical flow
 	 */
-	if( !net->Process(imgCUDA[0], imgCUDA[1], flowCUDA, imgWidth, imgHeight, filterMode) )
-	{
+	if (!net->Process(imgCUDA[0], imgCUDA[1], flowCUDA, imgWidth, imgHeight, filterMode)) {
 		printf("flownet-console:  failed to process optical flow\n");
 		return 0;
 	}
 
-	// wait for GPU to complete work			
+	// wait for GPU to complete work
 	CUDA(cudaDeviceSynchronize());
 
 	// print out performance info
 	net->PrintProfilerTimes();
 
-
 	/*
 	 * save output image
 	 */
-	if( !saveImageRGBA(outputFilename, (float4*)flowCPU, imgWidth, imgHeight) )
+	if (!saveImageRGBA(outputFilename, (float4*)flowCPU, imgWidth, imgHeight))
 		printf("flownet-console:  failed to save output image to '%s'\n", outputFilename);
 	else
 		printf("flownet-console:  completed saving '%s'\n", outputFilename);
 
-	
 	/*
 	 * destroy resources
 	 */

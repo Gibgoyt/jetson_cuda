@@ -19,29 +19,24 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
- 
+
 #ifndef __PYTHON_BINDINGS_TENSORNET__
 #define __PYTHON_BINDINGS_TENSORNET__
 
 #include "PyInference.h"
 
+	// forward declarations
+	class tensorNet;
 
-// forward declarations
-class tensorNet;
+	// PyTensorNet container
+	typedef struct {
+		PyObject_HEAD tensorNet* net;  // object instance
+	} PyTensorNet_Object;
 
+	// Retrieve the type object
+	PyTypeObject* PyTensorNet_Type();
 
-// PyTensorNet container
-typedef struct {
-    PyObject_HEAD
-    tensorNet* net;	// object instance
-} PyTensorNet_Object;
-
-
-// Retrieve the type object
-PyTypeObject* PyTensorNet_Type();
-
-// Register object type
-bool PyTensorNet_Register( PyObject* module );
-
+	// Register object type
+	bool PyTensorNet_Register(PyObject* module);
 
 #endif

@@ -19,15 +19,13 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
- 
+
 #ifndef __PYTHON_BINDINGS_SEGNET__
 #define __PYTHON_BINDINGS_SEGNET__
 
 #include "PyInference.h"
 
-
-// Register object type
-bool PySegNet_Register( PyObject* module );
-
+	// Register object type
+	bool PySegNet_Register(PyObject* module);
 
 #endif

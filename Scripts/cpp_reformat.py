@@ -1,10 +1,24 @@
 #!/usr/bin/env python3
 """
-cpp_reformat.py -- reformat a C/C++ file to Ahmed's house style.
+cpp_reformat.py -- reformat C/C++ files to Ahmed's house style.
 
-Pipeline per file:
-  1. Refuse if the file is HTML (defensive check for accidentally-saved web pages).
-  2. Record baseline `g++ -fsyntax-only` error count.
+Two modes:
+
+  LIST MODE (default):
+    ./Scripts/cpp_reformat.py
+        Reads ./Scripts/cpp_reformat_files.txt, runs a per-file
+        `git restore --` on every entry that passes the C/C++ filter
+        (so each file starts from a clean HEAD state), then formats them.
+        On the first regression: print the file and g++ stderr, leave the
+        corrupted file on disk, exit non-zero.
+
+  AD-HOC MODE:
+    ./Scripts/cpp_reformat.py FILE [FILE ...]
+        Formats just those files. No pre-flight git restore.
+
+Per-file pipeline:
+  1. Refuse if the file looks like HTML (defensive check).
+  2. For non-CUDA: record baseline `g++ -fsyntax-only` error count.
   3. Run `clang-format` with an INLINE style (so this script does not depend on
      whichever `.clang-format` is in scope on disk).
   4. Python post-pass: re-indent the body of every `#if`/`#endif` block one tab
@@ -12,15 +26,16 @@ Pipeline per file:
      indent of their `#if`. ONLY prepends tabs to leading whitespace -- never
      touches a character past the first non-whitespace position, so it cannot
      change C++ tokenization.
-  5. Re-run `g++ -fsyntax-only`. If the error count went UP, the file is
-     restored with `git checkout HEAD -- <file>` and a regression is reported.
+  5. For non-CUDA: re-run `g++ -fsyntax-only`. If the error count went UP,
+     print the file path + first ~50 lines of stderr, leave the file on disk,
+     and exit immediately. The user is expected to inspect it manually and
+     fix this script before running again.
 
-CLI:
-  ./Scripts/cpp_reformat.py FILE [FILE ...]
-  --check       : write the reformatted file, run g++ check, then restore the
-                  original from the on-disk backup (does NOT touch git).
-  --no-restore  : do not auto-restore on regression (default: restore from HEAD).
-  --std=c++NN   : standard for g++ check (default: c++20).
+CUDA files (.cu/.cuh) get formatted but the g++ check is skipped (g++ does not
+understand `__global__`, `<<<...>>>`, etc.).
+
+Vendored third-party files (utils/image/stb/*, utils/json.hpp) are skipped
+entirely so we never diff against upstream.
 """
 
 import argparse
@@ -69,6 +84,20 @@ CLANG_FORMAT_STYLE = """{
 
 HTML_MARKERS = ('<!doctype html', '<html ', '<html>')
 
+DEFAULT_LIST = Path('./Scripts/cpp_reformat_files.txt')
+
+CPP_EXTS = {'.cpp', '.cc', '.cxx', '.cppm', '.hpp', '.h', '.inl'}
+CUDA_EXTS = {'.cu', '.cuh'}
+FORMAT_EXTS = CPP_EXTS | CUDA_EXTS
+
+# Path fragments / exact relpaths for vendored / upstream code we must NOT touch.
+VENDORED_PREFIXES = (
+    'utils/image/stb/',
+)
+VENDORED_EXACT = {
+    'utils/json.hpp',
+}
+
 
 def looks_like_html(text: str) -> bool:
     head = text[:4000].lower()
@@ -79,17 +108,45 @@ def run(cmd, **kwargs) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, capture_output=True, text=True, **kwargs)
 
 
+def normalize_relpath(p: Path) -> str:
+    s = str(p)
+    if s.startswith('./'):
+        s = s[2:]
+    return s
+
+
+def is_vendored(p: Path) -> bool:
+    rel = normalize_relpath(p)
+    if rel in VENDORED_EXACT:
+        return True
+    return any(rel.startswith(prefix) for prefix in VENDORED_PREFIXES)
+
+
+def classify(p: Path) -> str:
+    """Return one of: 'cpp', 'cuda', 'vendored', 'skip'."""
+    if is_vendored(p):
+        return 'vendored'
+    ext = p.suffix.lower()
+    if ext in CUDA_EXTS:
+        return 'cuda'
+    if ext in CPP_EXTS:
+        return 'cpp'
+    return 'skip'
+
+
 def gpp_error_count(path: Path, std: str) -> tuple[int, int, str]:
     result = run([
         'g++', '-fsyntax-only', f'-std={std}', '-w', '-x', 'c++', str(path),
     ])
-    errs = len(re.findall(r': error:', result.stderr))
+    # Count distinct diagnostic lines with `error:` or `fatal error:`.
+    # g++ emits these as: `<file>:<line>:<col>: error: ...` or `... fatal error: ...`
+    errs = len(re.findall(r':\s*(?:fatal\s+)?error:', result.stderr))
     return result.returncode, errs, result.stderr
 
 
 def clang_format_inplace(path: Path) -> None:
     name = path.name
-    if not any(name.endswith(e) for e in ('.cpp', '.hpp', '.h', '.cc', '.cxx', '.cppm')):
+    if not any(name.endswith(e) for e in ('.cpp', '.hpp', '.h', '.cc', '.cxx', '.cppm', '.cu', '.cuh', '.inl')):
         assume = name + '.hpp'
     else:
         assume = name
@@ -177,25 +234,84 @@ def post_pass_indent_pp_bodies(text: str) -> str:
     return ''.join(out)
 
 
-def git_restore_head(path: Path) -> None:
-    run(['git', 'checkout', 'HEAD', '--', str(path)])
+def read_list_file(list_path: Path) -> list[Path]:
+    raw = list_path.read_text(encoding='utf-8').splitlines()
+    paths = []
+    for line in raw:
+        s = line.strip()
+        if not s or s.startswith('#'):
+            continue
+        paths.append(Path(s))
+    return paths
 
 
-def process_file(path: Path, *, check: bool, restore: bool, std: str) -> int:
+def preflight_git_restore(paths: list[Path]) -> None:
+    """
+    For every file in `paths` that we are about to format, run
+    `git restore -- <file>`. This guarantees we start from HEAD state.
+
+    We deliberately do this per-file (never `git reset`, never a wildcard
+    `git checkout HEAD -- '*'`) so any WIP the user has in OTHER files
+    is left alone.
+    """
+    print(f'[preflight] git restore -- (x{len(paths)} files)')
+    failed = 0
+    for p in paths:
+        if not p.exists():
+            # Untracked / never existed -- nothing to restore. Skip silently.
+            continue
+        r = run(['git', 'restore', '--', str(p)])
+        if r.returncode != 0:
+            failed += 1
+            print(f'  [warn] git restore failed for {p}: {r.stderr.strip()}', file=sys.stderr)
+    if failed:
+        print(f'[preflight] {failed} restore(s) failed (continuing)', file=sys.stderr)
+    else:
+        print('[preflight] all restores ok')
+
+
+class Regression(Exception):
+    def __init__(self, path: Path, baseline: int, after: int, stderr: str):
+        super().__init__(f'regression on {path}: {baseline} -> {after}')
+        self.path = path
+        self.baseline = baseline
+        self.after = after
+        self.stderr = stderr
+
+
+def process_file(
+    path: Path,
+    *,
+    check: bool,
+    std: str,
+    skip_gpp: bool,
+) -> str:
+    """
+    Returns a short status string:
+      'ok'         - reformatted, no error count change
+      'kept'       - reformatted, baseline already had errors, count preserved
+      'cuda'       - reformatted, g++ check skipped
+      'html-skip'  - file looked like HTML, refused
+    Raises Regression on increase in g++ error count.
+    """
     if not path.is_file():
         print(f'[skip] {path}: not a regular file', file=sys.stderr)
-        return 2
+        return 'missing'
 
     text = path.read_text(encoding='utf-8', errors='replace')
 
     if looks_like_html(text):
         print(f'[skip] {path}: file appears to be HTML, not C/C++ -- refusing to format')
-        return 2
+        return 'html-skip'
 
-    print(f'[+] {path}')
+    label = '[+cuda]' if skip_gpp else '[+]'
+    print(f'{label} {path}')
 
-    rc0, errs0, _ = gpp_error_count(path, std)
-    print(f'    baseline g++:   exit={rc0:>3}, error: count={errs0}')
+    if skip_gpp:
+        rc0, errs0 = 0, 0
+    else:
+        rc0, errs0, _ = gpp_error_count(path, std)
+        print(f'    baseline g++:   exit={rc0:>3}, error count={errs0}')
 
     backup = Path(tempfile.mkstemp(prefix=f'reformat_{path.stem}_', suffix='.orig')[1])
     backup.write_text(text, encoding='utf-8')
@@ -206,24 +322,23 @@ def process_file(path: Path, *, check: bool, restore: bool, std: str) -> int:
         final = post_pass_indent_pp_bodies(after_cf)
         path.write_text(final, encoding='utf-8')
 
+        if skip_gpp:
+            if check:
+                shutil.copy(backup, path)
+                print('    [check mode] file rolled back to original')
+            return 'cuda'
+
         rc1, errs1, stderr1 = gpp_error_count(path, std)
-        print(f'    reformat g++:   exit={rc1:>3}, error: count={errs1}')
+        print(f'    reformat g++:   exit={rc1:>3}, error count={errs1}')
 
         if errs1 > errs0:
-            print(f'    [REGRESSION] error count {errs0} -> {errs1}')
-            sample = stderr1.splitlines()[:25]
-            for ln in sample:
-                print(f'      | {ln}')
-            if restore:
-                git_restore_head(path)
-                print(f'    restored: git checkout HEAD -- {path}')
-            return 1
+            raise Regression(path, errs0, errs1, stderr1)
 
         if check:
-            # rollback to backup
             shutil.copy(backup, path)
             print('    [check mode] file rolled back to original')
-        return 0
+
+        return 'kept' if errs0 > 0 else 'ok'
     finally:
         try:
             backup.unlink()
@@ -233,24 +348,96 @@ def process_file(path: Path, *, check: bool, restore: bool, std: str) -> int:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description='Reformat C/C++ files to Ahmed house style.')
-    ap.add_argument('files', nargs='+', type=Path)
+    ap.add_argument('files', nargs='*', type=Path,
+                    help='ad-hoc per-file mode; if empty, list mode is used')
+    ap.add_argument('--from-list', type=Path, default=DEFAULT_LIST,
+                    help=f'path to file list (default: {DEFAULT_LIST})')
     ap.add_argument('--check', action='store_true',
                     help='write reformatted file then roll back to on-disk backup')
-    ap.add_argument('--no-restore', action='store_true',
-                    help='do not git-restore on regression')
+    ap.add_argument('--keep-going', action='store_true',
+                    help='do not halt on the first regression (still leaves files on disk)')
+    ap.add_argument('--no-preflight-restore', action='store_true',
+                    help='in list mode, skip the per-file `git restore --` pre-flight')
     ap.add_argument('--std', default='c++20', help='C++ standard for g++ check')
     args = ap.parse_args(argv)
 
-    worst = 0
-    for f in args.files:
-        rc = process_file(
-            f,
-            check=args.check,
-            restore=not args.no_restore,
-            std=args.std,
-        )
-        worst = max(worst, rc)
-    return worst
+    # Mode selection: explicit files -> ad-hoc; otherwise list mode.
+    if args.files:
+        ad_hoc_files = list(args.files)
+        list_mode = False
+    else:
+        if not args.from_list.is_file():
+            print(f'error: list file not found: {args.from_list}', file=sys.stderr)
+            return 2
+        ad_hoc_files = read_list_file(args.from_list)
+        list_mode = True
+        print(f'[list-mode] reading {args.from_list} ({len(ad_hoc_files)} entries)')
+
+    # Classify everything up front.
+    bucketed = {'cpp': [], 'cuda': [], 'vendored': [], 'skip': [], 'missing': []}
+    for p in ad_hoc_files:
+        if not p.exists():
+            bucketed['missing'].append(p)
+            continue
+        bucketed[classify(p)].append(p)
+
+    if list_mode:
+        print(f'  cpp/h/hpp/inl     : {len(bucketed["cpp"])}')
+        print(f'  cuda (.cu/.cuh)   : {len(bucketed["cuda"])}')
+        print(f'  vendored (skip)   : {len(bucketed["vendored"])}')
+        print(f'  non-cpp (skip)    : {len(bucketed["skip"])}')
+        print(f'  missing on disk   : {len(bucketed["missing"])}')
+
+    target_paths = bucketed['cpp'] + bucketed['cuda']
+
+    # Pre-flight: per-file `git restore --` for the files we WILL format.
+    if list_mode and not args.no_preflight_restore:
+        preflight_git_restore(target_paths)
+
+    counts = {'ok': 0, 'kept': 0, 'cuda': 0, 'html-skip': 0, 'missing': 0}
+    regression_path = None
+
+    try:
+        for p in target_paths:
+            skip_gpp = classify(p) == 'cuda'
+            try:
+                status = process_file(p, check=args.check, std=args.std, skip_gpp=skip_gpp)
+            except Regression as reg:
+                print('')
+                print('=' * 80)
+                print(f'[REGRESSION] {reg.path}')
+                print(f'  baseline errors    : {reg.baseline}')
+                print(f'  post-format errors : {reg.after}')
+                print('  ----- g++ stderr (first 50 lines) -----')
+                for ln in reg.stderr.splitlines()[:50]:
+                    print(f'  | {ln}')
+                print('=' * 80)
+                print(f'  file left ON DISK for inspection: {reg.path}')
+                print(f'  run: g++ -fsyntax-only -std={args.std} -w -x c++ {reg.path}')
+                print(f'  diff: git diff -- {reg.path}')
+                if not args.keep_going:
+                    regression_path = reg.path
+                    break
+                regression_path = regression_path or reg.path
+                continue
+            counts[status] = counts.get(status, 0) + 1
+    finally:
+        print('')
+        print('=' * 80)
+        print('summary')
+        print(f'  formatted ok          : {counts["ok"]}')
+        print(f'  baseline errors kept  : {counts["kept"]}')
+        print(f'  CUDA (format only)    : {counts["cuda"]}')
+        print(f'  HTML refused          : {counts["html-skip"]}')
+        if list_mode:
+            print(f'  vendored skipped      : {len(bucketed["vendored"])}')
+            print(f'  non-cpp skipped       : {len(bucketed["skip"])}')
+            print(f'  missing on disk       : {len(bucketed["missing"])}')
+        if regression_path is not None:
+            print(f'  HALTED on regression  : {regression_path}')
+        print('=' * 80)
+
+    return 1 if regression_path is not None else 0
 
 
 if __name__ == '__main__':

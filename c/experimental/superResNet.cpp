@@ -23,39 +23,28 @@
 #include "superResNet.h"
 #include "cudaUtility.h"
 
-
 // constructor
-superResNet::superResNet()
-{
-
-}
-
+superResNet::superResNet() {}
 
 // Destructor
-superResNet::~superResNet()
-{
-
-}
-
+superResNet::~superResNet() {}
 
 // Create
-superResNet* superResNet::Create()
-{
+superResNet* superResNet::Create() {
 #ifndef HAS_SUPERRES_NET
-	printf(LOG_TRT "error -- superResNet is supported only in TensorRT 5.0 and newer\n");
-	return NULL;
+		printf(LOG_TRT "error -- superResNet is supported only in TensorRT 5.0 and newer\n");
+		return NULL;
 #endif
 
 	superResNet* net = new superResNet();
 
-	const char* model_path  = "networks/Super-Resolution-BSD500/super_resolution_bsd500.onnx";
-	const char* input_blob  = "input_0";
+	const char* model_path = "networks/Super-Resolution-BSD500/super_resolution_bsd500.onnx";
+	const char* input_blob = "input_0";
 	const char* output_blob = "output_0";
 
 	const uint32_t maxBatchSize = 1;
 
-	if( !net->LoadNetwork(NULL, model_path, NULL, input_blob, output_blob, maxBatchSize) )
-	{
+	if (!net->LoadNetwork(NULL, model_path, NULL, input_blob, output_blob, maxBatchSize)) {
 		printf(LOG_TRT "failed to load superResNet model\n");
 		return NULL;
 	}
@@ -73,31 +62,55 @@ superResNet* superResNet::Create()
 	return net;
 }
 
-
 // cudaPreSuperResNet (from superResNet.cu)
-cudaError_t cudaPreSuperResNet( float4* input, size_t inputWidth, size_t inputHeight,
-				            float* output, size_t outputWidth, size_t outputHeight,
-					       float maxPixelValue, cudaStream_t stream );
+cudaError_t cudaPreSuperResNet(
+    float4* input,
+    size_t inputWidth,
+    size_t inputHeight,
+    float* output,
+    size_t outputWidth,
+    size_t outputHeight,
+    float maxPixelValue,
+    cudaStream_t stream
+);
 
 // cudaPostSuperResNet (from superResNet.cu)
-cudaError_t cudaPostSuperResNet( float* input, size_t inputWidth, size_t inputHeight,
-				             float4* output, size_t outputWidth, size_t outputHeight,
-					        float maxPixelValue, cudaStream_t stream );
+cudaError_t cudaPostSuperResNet(
+    float* input,
+    size_t inputWidth,
+    size_t inputHeight,
+    float4* output,
+    size_t outputWidth,
+    size_t outputHeight,
+    float maxPixelValue,
+    cudaStream_t stream
+);
 
 // UpscaleRGBA
-bool superResNet::UpscaleRGBA( float* input, uint32_t inputWidth, uint32_t inputHeight,
-		    				 float* output, uint32_t outputWidth, uint32_t outputHeight,
-		    				 float maxPixelValue )
-{
+bool superResNet::UpscaleRGBA(
+    float* input,
+    uint32_t inputWidth,
+    uint32_t inputHeight,
+    float* output,
+    uint32_t outputWidth,
+    uint32_t outputHeight,
+    float maxPixelValue
+) {
 	PROFILER_BEGIN(PROFILER_PREPROCESS);
 
 	/*
 	 * convert input image to NCHW format and with pixel range 0.0-1.0f
 	 */
-	if( CUDA_FAILED(cudaPreSuperResNet((float4*)input, inputWidth, inputHeight,
-								mInputs[0].CUDA, GetInputWidth(), GetInputHeight(), 
-								maxPixelValue, GetStream())) )
-	{
+	if (CUDA_FAILED(cudaPreSuperResNet(
+	        (float4*)input,
+	        inputWidth,
+	        inputHeight,
+	        mInputs[0].CUDA,
+	        GetInputWidth(),
+	        GetInputHeight(),
+	        maxPixelValue,
+	        GetStream()
+	    ))) {
 		printf(LOG_TRT "superResNet::UpscaleRGBA() -- cudaPreSuperResNet() failed\n");
 		return false;
 	}
@@ -107,8 +120,8 @@ bool superResNet::UpscaleRGBA( float* input, uint32_t inputWidth, uint32_t input
 
 	/*
 	 * perform the inferencing
- 	 */
-	if( !ProcessNetwork() )
+	 */
+	if (!ProcessNetwork())
 		return false;
 
 	PROFILER_END(PROFILER_NETWORK);
@@ -117,10 +130,16 @@ bool superResNet::UpscaleRGBA( float* input, uint32_t inputWidth, uint32_t input
 	/*
 	 * convert output image from NCHW to packed RGBA, with the user's pixel range
 	 */
-	if( CUDA_FAILED(cudaPostSuperResNet(mOutputs[0].CUDA, GetOutputWidth(), GetOutputHeight(),
-								 (float4*)output, outputWidth, outputHeight, 
-								 maxPixelValue, GetStream())) )
-	{
+	if (CUDA_FAILED(cudaPostSuperResNet(
+	        mOutputs[0].CUDA,
+	        GetOutputWidth(),
+	        GetOutputHeight(),
+	        (float4*)output,
+	        outputWidth,
+	        outputHeight,
+	        maxPixelValue,
+	        GetStream()
+	    ))) {
 		printf(LOG_TRT "superResNet::UpscaleRGBA() -- cudaPostSuperResNet() failed\n");
 		return false;
 	}
@@ -129,10 +148,15 @@ bool superResNet::UpscaleRGBA( float* input, uint32_t inputWidth, uint32_t input
 	return true;
 }
 
-
 // UpscaleRGBA
-bool superResNet::UpscaleRGBA( float* input, float* output, float maxPixelValue )
-{
-	return UpscaleRGBA(input, GetInputWidth(), GetInputHeight(), output, GetOutputWidth(), GetOutputHeight(), maxPixelValue);
+bool superResNet::UpscaleRGBA(float* input, float* output, float maxPixelValue) {
+	return UpscaleRGBA(
+	    input,
+	    GetInputWidth(),
+	    GetInputHeight(),
+	    output,
+	    GetOutputWidth(),
+	    GetOutputHeight(),
+	    maxPixelValue
+	);
 }
-

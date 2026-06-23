@@ -30,20 +30,16 @@
 
 #include <signal.h>
 
-
 bool signal_recieved = false;
 
-void sig_handler(int signo)
-{
-	if( signo == SIGINT )
-	{
+void sig_handler(int signo) {
+	if (signo == SIGINT) {
 		LogVerbose("received SIGINT\n");
 		signal_recieved = true;
 	}
 }
 
-int usage()
-{
+int usage() {
 	printf("usage: segnet [--help] [--network NETWORK] ...\n");
 	printf("              input_URI [output_URI]\n\n");
 	printf("Segment and classify a video/image stream using a semantic segmentation DNN.\n");
@@ -60,16 +56,15 @@ int usage()
 	return 0;
 }
 
-
 //
 // segmentation buffers
 //
-typedef uchar3 pixelType;		// this can be uchar3, uchar4, float3, float4
+typedef uchar3 pixelType;  // this can be uchar3, uchar4, float3, float4
 
-pixelType* imgMask      = NULL;	// color of each segmentation class
-pixelType* imgOverlay   = NULL;	// input + alpha-blended mask
-pixelType* imgComposite = NULL;	// overlay with mask next to it
-pixelType* imgOutput    = NULL;	// reference to one of the above three
+pixelType* imgMask = NULL;       // color of each segmentation class
+pixelType* imgOverlay = NULL;    // input + alpha-blended mask
+pixelType* imgComposite = NULL;  // overlay with mask next to it
+pixelType* imgOutput = NULL;     // reference to one of the above three
 
 int2 maskSize;
 int2 overlaySize;
@@ -77,10 +72,9 @@ int2 compositeSize;
 int2 outputSize;
 
 // allocate mask/overlay output buffers
-bool allocBuffers( int width, int height, uint32_t flags )
-{
+bool allocBuffers(int width, int height, uint32_t flags) {
 	// check if the buffers were already allocated for this size
-	if( imgOverlay != NULL && width == overlaySize.x && height == overlaySize.y )
+	if (imgOverlay != NULL && width == overlaySize.x && height == overlaySize.y)
 		return true;
 
 	// free previous buffers if they exit
@@ -90,12 +84,14 @@ bool allocBuffers( int width, int height, uint32_t flags )
 
 	// allocate overlay image
 	overlaySize = make_int2(width, height);
-	
-	if( flags & segNet::VISUALIZE_OVERLAY )
-	{
-		if( !cudaAllocMapped(&imgOverlay, overlaySize) )
-		{
-			LogError("segnet:  failed to allocate CUDA memory for overlay image (%ux%u)\n", width, height);
+
+	if (flags & segNet::VISUALIZE_OVERLAY) {
+		if (!cudaAllocMapped(&imgOverlay, overlaySize)) {
+			LogError(
+			    "segnet:  failed to allocate CUDA memory for overlay image (%ux%u)\n",
+			    width,
+			    height
+			);
 			return false;
 		}
 
@@ -104,12 +100,11 @@ bool allocBuffers( int width, int height, uint32_t flags )
 	}
 
 	// allocate mask image (half the size, unless it's the only output)
-	if( flags & segNet::VISUALIZE_MASK )
-	{
-		maskSize = (flags & segNet::VISUALIZE_OVERLAY) ? make_int2(width/2, height/2) : overlaySize;
+	if (flags & segNet::VISUALIZE_MASK) {
+		maskSize =
+		    (flags & segNet::VISUALIZE_OVERLAY) ? make_int2(width / 2, height / 2) : overlaySize;
 
-		if( !cudaAllocMapped(&imgMask, maskSize) )
-		{
+		if (!cudaAllocMapped(&imgMask, maskSize)) {
 			LogError("segnet:  failed to allocate CUDA memory for mask image\n");
 			return false;
 		}
@@ -119,12 +114,10 @@ bool allocBuffers( int width, int height, uint32_t flags )
 	}
 
 	// allocate composite image if both overlay and mask are used
-	if( (flags & segNet::VISUALIZE_OVERLAY) && (flags & segNet::VISUALIZE_MASK) )
-	{
+	if ((flags & segNet::VISUALIZE_OVERLAY) && (flags & segNet::VISUALIZE_MASK)) {
 		compositeSize = make_int2(overlaySize.x + maskSize.x, overlaySize.y);
 
-		if( !cudaAllocMapped(&imgComposite, compositeSize) )
-		{
+		if (!cudaAllocMapped(&imgComposite, compositeSize)) {
 			LogError("segnet:  failed to allocate CUDA memory for composite image\n");
 			return false;
 		}
@@ -136,159 +129,149 @@ bool allocBuffers( int width, int height, uint32_t flags )
 	return true;
 }
 
-
-int main( int argc, char** argv )
-{
+int main(int argc, char** argv) {
 	/*
 	 * parse command line
 	 */
 	commandLine cmdLine(argc, argv);
 
-	if( cmdLine.GetFlag("help") )
+	if (cmdLine.GetFlag("help"))
 		return usage();
-
 
 	/*
 	 * attach signal handler
 	 */
-	if( signal(SIGINT, sig_handler) == SIG_ERR )
+	if (signal(SIGINT, sig_handler) == SIG_ERR)
 		LogError("can't catch SIGINT\n");
-
 
 	/*
 	 * create input stream
 	 */
 	videoSource* input = videoSource::Create(cmdLine, ARG_POSITION(0));
 
-	if( !input )
-	{
+	if (!input) {
 		LogError("segnet:  failed to create input stream\n");
 		return 1;
 	}
-
 
 	/*
 	 * create output stream
 	 */
 	videoOutput* output = videoOutput::Create(cmdLine, ARG_POSITION(1));
-	
-	if( !output )
-	{
-		LogError("segnet:  failed to create output stream\n");	
+
+	if (!output) {
+		LogError("segnet:  failed to create output stream\n");
 		return 1;
 	}
-	
 
 	/*
 	 * create segmentation network
 	 */
 	segNet* net = segNet::Create(cmdLine);
-	
-	if( !net )
-	{
+
+	if (!net) {
 		LogError("segnet:  failed to initialize segNet\n");
 		return 1;
 	}
 
-	// set alpha blending value for classes that don't explicitly already have an alpha	
+	// set alpha blending value for classes that don't explicitly already have an alpha
 	net->SetOverlayAlpha(cmdLine.GetFloat("alpha", 150.0f));
 
 	// get the desired overlay/mask filtering mode
-	const segNet::FilterMode filterMode = segNet::FilterModeFromStr(cmdLine.GetString("filter-mode", "linear"));
+	const segNet::FilterMode filterMode =
+	    segNet::FilterModeFromStr(cmdLine.GetString("filter-mode", "linear"));
 
 	// get the visualization flags
-	const uint32_t visualizationFlags = segNet::VisualizationFlagsFromStr(cmdLine.GetString("visualize", "overlay|mask"));
+	const uint32_t visualizationFlags =
+	    segNet::VisualizationFlagsFromStr(cmdLine.GetString("visualize", "overlay|mask"));
 
 	// get the object class to ignore (if any)
 	const char* ignoreClass = cmdLine.GetString("ignore-class", "void");
 
-	
 	/*
 	 * processing loop
 	 */
-	while( !signal_recieved )
-	{
+	while (!signal_recieved) {
 		// capture next image
 		pixelType* imgInput = NULL;
 		int status = 0;
-		
-		if( !input->Capture(&imgInput, &status) )
-		{
-			if( status == videoSource::TIMEOUT )
+
+		if (!input->Capture(&imgInput, &status)) {
+			if (status == videoSource::TIMEOUT)
 				continue;
-			
-			break; // EOS
+
+			break;  // EOS
 		}
 
 		// allocate buffers for this size frame
-		if( !allocBuffers(input->GetWidth(), input->GetHeight(), visualizationFlags) )
-		{
+		if (!allocBuffers(input->GetWidth(), input->GetHeight(), visualizationFlags)) {
 			LogError("segnet:  failed to allocate buffers\n");
 			continue;
 		}
 
 		// process the segmentation network
-		if( !net->Process(imgInput, input->GetWidth(), input->GetHeight(), ignoreClass) )
-		{
+		if (!net->Process(imgInput, input->GetWidth(), input->GetHeight(), ignoreClass)) {
 			LogError("segnet:  failed to process segmentation\n");
 			continue;
 		}
-		
+
 		// generate overlay
-		if( visualizationFlags & segNet::VISUALIZE_OVERLAY )
-		{
-			if( !net->Overlay(imgOverlay, overlaySize.x, overlaySize.y, filterMode) )
-			{
+		if (visualizationFlags & segNet::VISUALIZE_OVERLAY) {
+			if (!net->Overlay(imgOverlay, overlaySize.x, overlaySize.y, filterMode)) {
 				LogError("segnet:  failed to process segmentation overlay.\n");
 				continue;
 			}
 		}
 
 		// generate mask
-		if( visualizationFlags & segNet::VISUALIZE_MASK )
-		{
-			if( !net->Mask(imgMask, maskSize.x, maskSize.y, filterMode) )
-			{
+		if (visualizationFlags & segNet::VISUALIZE_MASK) {
+			if (!net->Mask(imgMask, maskSize.x, maskSize.y, filterMode)) {
 				LogError("segnet:-console:  failed to process segmentation mask.\n");
 				continue;
 			}
 		}
 
 		// generate composite
-		if( (visualizationFlags & segNet::VISUALIZE_OVERLAY) && (visualizationFlags & segNet::VISUALIZE_MASK) )
-		{
+		if ((visualizationFlags & segNet::VISUALIZE_OVERLAY) &&
+		    (visualizationFlags & segNet::VISUALIZE_MASK)) {
 			CUDA(cudaOverlay(imgOverlay, overlaySize, imgComposite, compositeSize, 0, 0));
 			CUDA(cudaOverlay(imgMask, maskSize, imgComposite, compositeSize, overlaySize.x, 0));
 		}
 
 		// render outputs
-		if( output != NULL )
-		{
+		if (output != NULL) {
 			output->Render(imgOutput, outputSize.x, outputSize.y);
 
 			// update the status bar
 			char str[256];
-			sprintf(str, "TensorRT %i.%i.%i | %s | Network %.0f FPS", NV_TENSORRT_MAJOR, NV_TENSORRT_MINOR, NV_TENSORRT_PATCH, net->GetNetworkName(), net->GetNetworkFPS());
+			sprintf(
+			    str,
+			    "TensorRT %i.%i.%i | %s | Network %.0f FPS",
+			    NV_TENSORRT_MAJOR,
+			    NV_TENSORRT_MINOR,
+			    NV_TENSORRT_PATCH,
+			    net->GetNetworkName(),
+			    net->GetNetworkFPS()
+			);
 			output->SetStatus(str);
 
 			// check if the user quit
-			if( !output->IsStreaming() )
+			if (!output->IsStreaming())
 				break;
 		}
 
-		// wait for the GPU to finish		
+		// wait for the GPU to finish
 		CUDA(cudaDeviceSynchronize());
 
 		// print out timing info
 		net->PrintProfilerTimes();
 	}
-	
 
 	/*
 	 * destroy resources
 	 */
 	LogVerbose("segnet:  shutting down...\n");
-	
+
 	SAFE_DELETE(input);
 	SAFE_DELETE(output);
 	SAFE_DELETE(net);
@@ -300,4 +283,3 @@ int main( int argc, char** argv )
 	LogVerbose("segnet:  shutdown complete.\n");
 	return 0;
 }
-

@@ -32,117 +32,108 @@
 
 #include <signal.h>
 
-
 bool signal_recieved = false;
 
-void sig_handler(int signo)
-{
-	if( signo == SIGINT )
-	{
+void sig_handler(int signo) {
+	if (signo == SIGINT) {
 		printf("received SIGINT\n");
 		signal_recieved = true;
 	}
 }
 
-
-int main( int argc, char** argv )
-{
+int main(int argc, char** argv) {
 	commandLine cmdLine(argc, argv);
 
 	/*
 	 * setup exit signal handler
 	 */
-	if( signal(SIGINT, sig_handler) == SIG_ERR )
+	if (signal(SIGINT, sig_handler) == SIG_ERR)
 		printf("\ncan't catch SIGINT\n");
-
 
 	/*
 	 * create the camera device
 	 */
-	gstCamera* camera = gstCamera::Create(cmdLine.GetInt("width", gstCamera::DefaultWidth),
-								   cmdLine.GetInt("height", gstCamera::DefaultHeight),
-								   cmdLine.GetString("camera"));
+	gstCamera* camera = gstCamera::Create(
+	    cmdLine.GetInt("width", gstCamera::DefaultWidth),
+	    cmdLine.GetInt("height", gstCamera::DefaultHeight),
+	    cmdLine.GetString("camera")
+	);
 
-	if( !camera )
-	{
+	if (!camera) {
 		printf("\nhomography-camera:  failed to initialize camera device\n");
 		return 0;
 	}
-	
-	const uint32_t imgWidth  = camera->GetWidth();
+
+	const uint32_t imgWidth = camera->GetWidth();
 	const uint32_t imgHeight = camera->GetHeight();
 
 	printf("\nhomography-camera:  successfully initialized camera device\n");
 	printf("    width:  %u\n", imgWidth);
 	printf("   height:  %u\n", imgHeight);
 	printf("    depth:  %u (bpp)\n\n", camera->GetPixelDepth());
-	
 
 	/*
 	 * create homography network
 	 */
 	homographyNet* net = homographyNet::Create(argc, argv);
-	
-	if( !net )
-	{
+
+	if (!net) {
 		printf("homography-camera:   failed to initialize homographyNet\n");
 		return 0;
 	}
 
-
 	/*
 	 * allocate memory for warped image
 	 */
-	float4* imgWarpedCPU  = NULL;
+	float4* imgWarpedCPU = NULL;
 	float4* imgWarpedCUDA = NULL;
 
-	if( !cudaAllocMapped((void**)&imgWarpedCPU, (void**)&imgWarpedCUDA, imgWidth * imgHeight * sizeof(float4)) )
-	{
+	if (!cudaAllocMapped(
+	        (void**)&imgWarpedCPU,
+	        (void**)&imgWarpedCUDA,
+	        imgWidth * imgHeight * sizeof(float4)
+	    )) {
 		printf("homography-console:  failed to allocate CUDA memory for warped image\n");
 		return 0;
 	}
-
 
 	/*
 	 * create openGL window
 	 */
 	glDisplay* display = glDisplay::Create();
-	
-	if( !display )
+
+	if (!display)
 		printf("homography-camera:  failed to create openGL display\n");
-	
 
 	/*
 	 * start streaming
 	 */
-	if( !camera->Open() )
-	{
+	if (!camera->Open()) {
 		printf("homography-camera:  failed to open camera for streaming\n");
 		return 0;
 	}
-	
+
 	printf("homography-camera:  camera open for streaming\n");
-	
-	
+
 	/*
 	 * stabilize the camera video
 	 */
 	float* lastImg = NULL;
 
-	float displacementAvg[] = {0,0,0,0,0,0,0,0};	// average the camera displacement over a series of frames 
-	const float displacementAvgFactor = 1.0f;	// to smooth it out over time (factor of 1.0 = instant)
-	
-	while( !signal_recieved )
-	{
+	float displacementAvg[] =
+	    {0, 0, 0, 0, 0, 0, 0, 0};  // average the camera displacement over a series of frames
+	const float displacementAvgFactor =
+	    1.0f;  // to smooth it out over time (factor of 1.0 = instant)
+
+	while (!signal_recieved) {
 		// capture RGBA image
 		float* imgRGBA = NULL;
 
-		if( !camera->CaptureRGBA(&imgRGBA, 1000) )
+		if (!camera->CaptureRGBA(&imgRGBA, 1000))
 			printf("homography-camera:  failed to capture frame\n");
 
 		// make sure we have 2 frames to use
-		if( !lastImg )
-		{
+		if (!lastImg) {
 			lastImg = imgRGBA;
 			continue;
 		}
@@ -150,22 +141,21 @@ int main( int argc, char** argv )
 		// find the displacement
 		float displacement[8];
 
-		if( !net->FindDisplacement(lastImg, imgRGBA, imgWidth, imgHeight, displacement) )
-		{
+		if (!net->FindDisplacement(lastImg, imgRGBA, imgWidth, imgHeight, displacement)) {
 			printf("homography-camera:  failed to find displacement\n");
 			continue;
 		}
 
 		// smooth the displacement
-		for( uint32_t n=0; n < 8; n++ )
-			displacementAvg[n] = displacement[n] * displacementAvgFactor + displacementAvg[n] * (1.0f - displacementAvgFactor);
+		for (uint32_t n = 0; n < 8; n++)
+			displacementAvg[n] = displacement[n] * displacementAvgFactor +
+			                     displacementAvg[n] * (1.0f - displacementAvgFactor);
 
 		// find the homography
 		float H[3][3];
 		float H_inv[3][3];
 
-		if( !net->ComputeHomography(displacementAvg, H, H_inv) )
-		{
+		if (!net->ComputeHomography(displacementAvg, H, H_inv)) {
 			printf("homography-camera:  failed to find homography\n");
 			continue;
 		}
@@ -174,37 +164,50 @@ int main( int argc, char** argv )
 		mat33_print(H_inv, "H_inv");
 
 		// stabilize the latest frame by warping it by H_inverse to align with the previous frame
-		if( CUDA_FAILED(cudaWarpPerspective((float4*)imgRGBA, imgWarpedCUDA, imgWidth, imgHeight, H_inv, false)) )
-		{
+		if (CUDA_FAILED(cudaWarpPerspective(
+		        (float4*)imgRGBA,
+		        imgWarpedCUDA,
+		        imgWidth,
+		        imgHeight,
+		        H_inv,
+		        false
+		    ))) {
 			printf("homography-console:  failed to warp output image\n");
 			continue;
 		}
 
 		// update display
-		if( display != NULL )
-		{
+		if (display != NULL) {
 			// render the image
 			display->RenderOnce((float*)imgWarpedCUDA, imgWidth, imgHeight);
 
 			// update the status bar
 			char str[256];
-			sprintf(str, "TensorRT %i.%i.%i | %s | Network %.0f FPS | Display %.0f FPS", NV_TENSORRT_MAJOR, NV_TENSORRT_MINOR, NV_TENSORRT_PATCH, precisionTypeToStr(net->GetPrecision()), net->GetNetworkFPS(), display->GetFPS());
+			sprintf(
+			    str,
+			    "TensorRT %i.%i.%i | %s | Network %.0f FPS | Display %.0f FPS",
+			    NV_TENSORRT_MAJOR,
+			    NV_TENSORRT_MINOR,
+			    NV_TENSORRT_PATCH,
+			    precisionTypeToStr(net->GetPrecision()),
+			    net->GetNetworkFPS(),
+			    display->GetFPS()
+			);
 			display->SetTitle(str);
 
 			// check if the user quit
-			if( display->IsClosed() )
-				signal_recieved = true;	
+			if (display->IsClosed())
+				signal_recieved = true;
 		}
 
 		lastImg = imgRGBA;
 	}
-	
-	
+
 	/*
 	 * destroy resources
 	 */
 	printf("homography-camera:  shutting down...\n");
-	
+
 	SAFE_DELETE(camera);
 	SAFE_DELETE(display);
 	SAFE_DELETE(net);
@@ -212,4 +215,3 @@ int main( int argc, char** argv )
 	printf("homography-camera:  shutdown complete.\n");
 	return 0;
 }
-

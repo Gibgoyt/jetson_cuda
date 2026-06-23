@@ -19,15 +19,13 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
- 
+
 #ifndef __PYTHON_BINDINGS_DETECTNET__
 #define __PYTHON_BINDINGS_DETECTNET__
 
 #include "PyInference.h"
 
-
-// Register object type
-bool PyDetectNet_Register( PyObject* module );
-
+	// Register object type
+	bool PyDetectNet_Register(PyObject* module);
 
 #endif

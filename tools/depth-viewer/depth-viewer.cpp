@@ -23,20 +23,16 @@
 #include "depthWindow.h"
 #include <signal.h>
 
-
 bool signal_recieved = false;
 
-void sig_handler(int signo)
-{
-	if( signo == SIGINT )
-	{
+void sig_handler(int signo) {
+	if (signo == SIGINT) {
 		printf("received SIGINT\n");
 		signal_recieved = true;
 	}
 }
 
-int usage()
-{
+int usage() {
 	printf("usage: depth-viewer [-h] [--camera CAMERA] file_left file_right\n");
 	printf("                    [--width WIDTH] [--height HEIGHT] [--calibration CAL]\n");
 	printf("                    [--depth DEPTHNET] [--stereo STEREONET]\n");
@@ -50,7 +46,7 @@ int usage()
 	printf("  --help            show this help message and exit\n");
 	printf("  --camera CAMERA   index of the MIPI CSI camera to use (e.g. CSI camera 0),\n");
 	printf("                    or for VL42 cameras the /dev/video device to use.\n");
-     printf("                    by default, MIPI CSI camera 0 will be used.\n");
+	printf("                    by default, MIPI CSI camera 0 will be used.\n");
 	printf("  --width WIDTH     desired width of camera stream (default: 1280 pixels)\n");
 	printf("  --height HEIGHT   desired height of camera stream (default: 720 pixels)\n");
 	printf("  --calibration CAL intrinsic calibration file(s) to use for the cameras\n");
@@ -65,35 +61,30 @@ int usage()
 	return 0;
 }
 
-int main( int argc, char** argv )
-{
+int main(int argc, char** argv) {
 	/*
 	 * parse command line
 	 */
 	commandLine cmdLine(argc, argv);
 
-	if( cmdLine.GetFlag("help") )
+	if (cmdLine.GetFlag("help"))
 		return usage();
 
-	
 	/*
 	 * attach signal handler
 	 */
-	if( signal(SIGINT, sig_handler) == SIG_ERR )
+	if (signal(SIGINT, sig_handler) == SIG_ERR)
 		printf("\ncan't catch SIGINT\n");
-
 
 	/*
 	 * create depth window
 	 */
 	DepthWindow* depthWindow = DepthWindow::Create(cmdLine);
 
-	if( !depthWindow )
-	{
+	if (!depthWindow) {
 		printf("depth-viewer:  failed to open DepthWindow\n");
 		return 0;
 	}
-
 
 	/*
 	 * create control window
@@ -102,40 +93,36 @@ int main( int argc, char** argv )
 
 	if( !controlWindow )
 	{
-		printf("depth-viewer:  failed to open ControlWindow\n");
-		return 0;
+	    printf("depth-viewer:  failed to open ControlWindow\n");
+	    return 0;
 	}*/
-
 
 	/*
 	 * processing loop
 	 */
-	while( !signal_recieved )
-	{
+	while (!signal_recieved) {
 		// capture & render latest frame
 		depthWindow->Render();
 
 		// update the control window
-		//controlWindow->ProcessEvents();
+		// controlWindow->ProcessEvents();
 
 		// check if the user quit
-		if( depthWindow->IsClosed() /*|| controlWindow->IsClosed()*/ )
+		if (depthWindow->IsClosed() /*|| controlWindow->IsClosed()*/)
 			signal_recieved = true;
 	}
-	
 
 	/*
 	 * destroy resources
 	 */
 	printf("depth-viewer:  shutting down...\n");
-	
-	if( depthWindow != NULL )
+
+	if (depthWindow != NULL)
 		delete depthWindow;
 
-	//if( captureWindow != NULL )
+	// if( captureWindow != NULL )
 	//	delete captureWindow;
 
 	printf("depth-viewer:  shutdown complete.\n");
 	return 0;
 }
-

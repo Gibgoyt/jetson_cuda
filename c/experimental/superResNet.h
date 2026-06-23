@@ -25,64 +25,65 @@
 
 #include "tensorNet.h"
 
+	//////////////////////////////////////////////////////////////////////////////////
+	/// @name superResNet
+	/// Super resolution DNN for upscaling images.
+	/// @ingroup deepVision
+	//////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////
-/// @name superResNet
-/// Super resolution DNN for upscaling images.
-/// @ingroup deepVision
-//////////////////////////////////////////////////////////////////////////////////
+	///@{
 
-///@{
-
-/**
- * @note superResNet is only supported with TensorRT 5.0 and newer,
- * as it uses ONNX models and requires ONNX import support in TensorRT.
- */
+	/**
+	 * @note superResNet is only supported with TensorRT 5.0 and newer,
+	 * as it uses ONNX models and requires ONNX import support in TensorRT.
+	 */
 #if NV_TENSORRT_MAJOR >= 5
-#define HAS_SUPERRES_NET
+	#define HAS_SUPERRES_NET
 #endif
 
-
-/**
- * Super Resolution Network
- * @ingroup superResNet
- */
-class superResNet : public tensorNet
-{
-public:
 	/**
-	 * Load super resolution network
+	 * Super Resolution Network
+	 * @ingroup superResNet
 	 */
-	static superResNet* Create();
+	class superResNet : public tensorNet {
+	public:
+		/**
+		 * Load super resolution network
+		 */
+		static superResNet* Create();
 
-	/**
-	 * Destroy
-	 */
-	~superResNet();
+		/**
+		 * Destroy
+		 */
+		~superResNet();
 
-	/**
-	 * Upscale a 4-channel RGBA image.
-	 */
-	bool UpscaleRGBA( float* input, uint32_t inputWidth, uint32_t inputHeight,
-			        float* output, uint32_t outputWidth, uint32_t outputHeight,
-			        float maxPixelValue=255.0f );
+		/**
+		 * Upscale a 4-channel RGBA image.
+		 */
+		bool UpscaleRGBA(
+		    float* input,
+		    uint32_t inputWidth,
+		    uint32_t inputHeight,
+		    float* output,
+		    uint32_t outputWidth,
+		    uint32_t outputHeight,
+		    float maxPixelValue = 255.0f
+		);
 
-	/**
-	 * Upscale a 4-channel RGBA image.
-	 */
-	bool UpscaleRGBA( float* input, float* output, float maxPixelValue=255.0f );
+		/**
+		 * Upscale a 4-channel RGBA image.
+		 */
+		bool UpscaleRGBA(float* input, float* output, float maxPixelValue = 255.0f);
 
-	/**
-	 * Retrieve the scale factor between the input and output.
-	 */
-	inline uint32_t GetScaleFactor() const						{ return GetOutputWidth() / GetInputWidth(); }
+		/**
+		 * Retrieve the scale factor between the input and output.
+		 */
+		inline uint32_t GetScaleFactor() const { return GetOutputWidth() / GetInputWidth(); }
 
-protected:
-	superResNet();
-};
+	protected:
+		superResNet();
+	};
 
-///@}
+	///@}
 
 #endif
-
-

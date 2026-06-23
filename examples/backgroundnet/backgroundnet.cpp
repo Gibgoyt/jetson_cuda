@@ -32,20 +32,16 @@
 
 #include <signal.h>
 
-
 bool signal_recieved = false;
 
-void sig_handler(int signo)
-{
-	if( signo == SIGINT )
-	{
+void sig_handler(int signo) {
+	if (signo == SIGINT) {
 		LogVerbose("received SIGINT\n");
 		signal_recieved = true;
 	}
 }
 
-int usage()
-{
+int usage() {
 	printf("usage: backgroundnet [--help] [--replace=IMAGE] ...\n");
 	printf("                input_URI [output_URI]\n\n");
 	printf("Perform background subtraction/removal on a video or image stream.\n");
@@ -68,174 +64,175 @@ int usage()
 	return 0;
 }
 
-typedef uchar4 pixelType;   			// can be uchar4 or float4 (need alpha channel for background replacement)
+typedef uchar4
+    pixelType;  // can be uchar4 or float4 (need alpha channel for background replacement)
 
-pixelType* imgReplacement = NULL;		// replacement background image (only if --replace is used)
-pixelType* imgReplacementScaled = NULL;	// replacement background image resized to the input size
-pixelType* imgOutput = NULL;			// output image (background + input with alpha blending)
+pixelType* imgReplacement = NULL;        // replacement background image (only if --replace is used)
+pixelType* imgReplacementScaled = NULL;  // replacement background image resized to the input size
+pixelType* imgOutput = NULL;             // output image (background + input with alpha blending)
 
 int2 replacementSize;
 int2 replacementSizeScaled;
 
 // replace the background of an image after it's been removed
-bool replaceBackground( pixelType* imgInput, int width, int height, cudaFilterMode filter )
-{
+bool replaceBackground(pixelType* imgInput, int width, int height, cudaFilterMode filter) {
 	const size_t size = width * height * sizeof(pixelType);
-	
-	if( !imgReplacementScaled || replacementSizeScaled.x != width || replacementSizeScaled.y != height )
-	{
+
+	if (!imgReplacementScaled || replacementSizeScaled.x != width ||
+	    replacementSizeScaled.y != height) {
 		CUDA_FREE(imgReplacementScaled);
 		CUDA_FREE_HOST(imgOutput);
 
-		if( !cudaAllocMapped(&imgOutput, size) )
+		if (!cudaAllocMapped(&imgOutput, size))
 			return false;
-		
+
 		CUDA_VERIFY(cudaMalloc(&imgReplacementScaled, size));
-		CUDA_VERIFY(cudaResize(imgReplacement, replacementSize.x, replacementSize.y,
-						   imgReplacementScaled, width, height, filter));
-						   
+		CUDA_VERIFY(cudaResize(
+		    imgReplacement,
+		    replacementSize.x,
+		    replacementSize.y,
+		    imgReplacementScaled,
+		    width,
+		    height,
+		    filter
+		));
+
 		replacementSizeScaled = make_int2(width, height);
 	}
-	
+
 	CUDA_VERIFY(cudaMemcpy(imgOutput, imgReplacementScaled, size, cudaMemcpyDeviceToDevice));
 	CUDA_VERIFY(cudaOverlay(imgInput, width, height, imgOutput, width, height, 0, 0));
-	
+
 	return true;
 }
-							  
 
-int main( int argc, char** argv )
-{
+int main(int argc, char** argv) {
 	/*
 	 * parse command line
 	 */
 	commandLine cmdLine(argc, argv);
 
-	if( cmdLine.GetFlag("help") )
+	if (cmdLine.GetFlag("help"))
 		return usage();
-
 
 	/*
 	 * attach signal handler
 	 */
-	if( signal(SIGINT, sig_handler) == SIG_ERR )
+	if (signal(SIGINT, sig_handler) == SIG_ERR)
 		LogError("can't catch SIGINT\n");
-
 
 	/*
 	 * create input stream
 	 */
 	videoSource* input = videoSource::Create(cmdLine, ARG_POSITION(0));
 
-	if( !input )
-	{
+	if (!input) {
 		LogError("backgroundnet:  failed to create input stream\n");
 		return 1;
 	}
-
 
 	/*
 	 * create output stream
 	 */
 	videoOutput* output = videoOutput::Create(cmdLine, ARG_POSITION(1));
-	
-	if( !output )
-	{
-		LogError("backgroundnet:  failed to create output stream\n");	
+
+	if (!output) {
+		LogError("backgroundnet:  failed to create output stream\n");
 		return 1;
 	}
-	
 
 	/*
 	 * create background subtraction/removal network
 	 */
 	backgroundNet* net = backgroundNet::Create(cmdLine);
-	
-	if( !net )
-	{
+
+	if (!net) {
 		LogError("backgroundnet:  failed to load backgroundNet\n");
 		return 1;
 	}
 
 	// parse the desired filter mode
 	const cudaFilterMode filter = cudaFilterModeFromStr(cmdLine.GetString("filter-mode"));
-	
-	
+
 	/*
 	 * load replacement background image if needed
 	 */
 	const char* replacementPath = cmdLine.GetString("replace");
-	
-	if( replacementPath != NULL && !loadImage(replacementPath, &imgReplacement, &replacementSize.x, &replacementSize.y) )
-	{
-		LogError("backgroundnet:  failed to load background replacement image %s\n", replacementPath);
+
+	if (replacementPath != NULL &&
+	    !loadImage(replacementPath, &imgReplacement, &replacementSize.x, &replacementSize.y)) {
+		LogError(
+		    "backgroundnet:  failed to load background replacement image %s\n",
+		    replacementPath
+		);
 		return 1;
 	}
-	
-	
+
 	/*
 	 * processing loop
 	 */
-	while( !signal_recieved )
-	{
+	while (!signal_recieved) {
 		// capture next image
 		pixelType* imgInput = NULL;
 		int status = 0;
-		
-		if( !input->Capture(&imgInput, &status) )
-		{
-			if( status == videoSource::TIMEOUT )
+
+		if (!input->Capture(&imgInput, &status)) {
+			if (status == videoSource::TIMEOUT)
 				continue;
-			
-			break; // EOS
+
+			break;  // EOS
 		}
 
 		// process image
-		if( !net->Process(imgInput, input->GetWidth(), input->GetHeight(), filter) )
-		{
+		if (!net->Process(imgInput, input->GetWidth(), input->GetHeight(), filter)) {
 			LogError("backgroundnet:  failed to process frame\n");
 			continue;
 		}
-	
+
 		// background replacement
-		if( imgReplacement != NULL )
+		if (imgReplacement != NULL)
 			replaceBackground(imgInput, input->GetWidth(), input->GetHeight(), filter);
 		else
 			imgOutput = imgInput;  // no bg replacement, pass through the input
-		
+
 		// render outputs
-		if( output != NULL )
-		{
+		if (output != NULL) {
 			output->Render(imgOutput, input->GetWidth(), input->GetHeight());
 
 			// update status bar
 			char str[256];
-			sprintf(str, "TensorRT %i.%i.%i | %s | Network %.0f FPS", NV_TENSORRT_MAJOR, NV_TENSORRT_MINOR, NV_TENSORRT_PATCH, net->GetNetworkName(), net->GetNetworkFPS());
-			output->SetStatus(str);	
+			sprintf(
+			    str,
+			    "TensorRT %i.%i.%i | %s | Network %.0f FPS",
+			    NV_TENSORRT_MAJOR,
+			    NV_TENSORRT_MINOR,
+			    NV_TENSORRT_PATCH,
+			    net->GetNetworkName(),
+			    net->GetNetworkFPS()
+			);
+			output->SetStatus(str);
 
 			// check if the user quit
-			if( !output->IsStreaming() )
+			if (!output->IsStreaming())
 				break;
 		}
-	
+
 		// print out timing info
 		net->PrintProfilerTimes();
 	}
-	
-	
+
 	/*
 	 * destroy resources
 	 */
 	LogVerbose("backgroundnet:  shutting down...\n");
-	
+
 	CUDA_FREE_HOST(imgReplacement);
 	CUDA_FREE(imgReplacementScaled);
 
 	SAFE_DELETE(input);
 	SAFE_DELETE(output);
 	SAFE_DELETE(net);
-	
+
 	LogVerbose("backgroundnet:  shutdown complete.\n");
 	return 0;
 }
-

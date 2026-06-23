@@ -27,24 +27,20 @@
 
 #include <signal.h>
 
-
 bool signal_recieved = false;
 
-void sig_handler(int signo)
-{
-	if( signo == SIGINT )
-	{
+void sig_handler(int signo) {
+	if (signo == SIGINT) {
 		LogVerbose("received SIGINT\n");
 		signal_recieved = true;
 	}
 }
 
-int usage()
-{
+int usage() {
 	printf("usage: posenet [--help] [--network=NETWORK] ...\n");
 	printf("                input_URI [output_URI]\n\n");
 	printf("Run pose estimation DNN on a video/image stream.\n");
-	printf("See below for additional arguments that may not be shown above.\n\n");	
+	printf("See below for additional arguments that may not be shown above.\n\n");
 	printf("positional arguments:\n");
 	printf("    input_URI       resource URI of input stream  (see videoSource below)\n");
 	printf("    output_URI      resource URI of output stream (see videoOutput below)\n\n");
@@ -57,121 +53,115 @@ int usage()
 	return 0;
 }
 
-int main( int argc, char** argv )
-{
+int main(int argc, char** argv) {
 	/*
 	 * parse command line
 	 */
 	commandLine cmdLine(argc, argv);
 
-	if( cmdLine.GetFlag("help") )
+	if (cmdLine.GetFlag("help"))
 		return usage();
-
 
 	/*
 	 * attach signal handler
 	 */
-	if( signal(SIGINT, sig_handler) == SIG_ERR )
+	if (signal(SIGINT, sig_handler) == SIG_ERR)
 		LogError("can't catch SIGINT\n");
-
 
 	/*
 	 * create input stream
 	 */
 	videoSource* input = videoSource::Create(cmdLine, ARG_POSITION(0));
 
-	if( !input )
-	{
+	if (!input) {
 		LogError("posenet: failed to create input stream\n");
 		return 1;
 	}
-
 
 	/*
 	 * create output stream
 	 */
 	videoOutput* output = videoOutput::Create(cmdLine, ARG_POSITION(1));
-	
-	if( !output )
-	{
-		LogError("posenet: failed to create output stream\n");	
+
+	if (!output) {
+		LogError("posenet: failed to create output stream\n");
 		return 1;
 	}
-	
 
 	/*
 	 * create recognition network
 	 */
 	poseNet* net = poseNet::Create(cmdLine);
-	
-	if( !net )
-	{
+
+	if (!net) {
 		LogError("posenet: failed to initialize poseNet\n");
 		return 1;
 	}
 
 	// parse overlay flags
-	const uint32_t overlayFlags = poseNet::OverlayFlagsFromStr(cmdLine.GetString("overlay", "links,keypoints"));
-	
-	
+	const uint32_t overlayFlags =
+	    poseNet::OverlayFlagsFromStr(cmdLine.GetString("overlay", "links,keypoints"));
+
 	/*
 	 * processing loop
 	 */
-	while( !signal_recieved )
-	{
+	while (!signal_recieved) {
 		// capture next image
 		uchar3* image = NULL;
 		int status = 0;
-		
-		if( !input->Capture(&image, &status) )
-		{
-			if( status == videoSource::TIMEOUT )
+
+		if (!input->Capture(&image, &status)) {
+			if (status == videoSource::TIMEOUT)
 				continue;
-			
-			break; // EOS
+
+			break;  // EOS
 		}
 
 		// run pose estimation
 		std::vector<poseNet::ObjectPose> poses;
-		
-		if( !net->Process(image, input->GetWidth(), input->GetHeight(), poses, overlayFlags) )
-		{
+
+		if (!net->Process(image, input->GetWidth(), input->GetHeight(), poses, overlayFlags)) {
 			LogError("posenet: failed to process frame\n");
 			continue;
 		}
-		
+
 		LogInfo("posenet: detected %zu %s(s)\n", poses.size(), net->GetCategory());
-		
+
 		// render outputs
-		if( output != NULL )
-		{
+		if (output != NULL) {
 			output->Render(image, input->GetWidth(), input->GetHeight());
 
 			// update status bar
 			char str[256];
-			sprintf(str, "TensorRT %i.%i.%i | %s | Network %.0f FPS", NV_TENSORRT_MAJOR, NV_TENSORRT_MINOR, NV_TENSORRT_PATCH, precisionTypeToStr(net->GetPrecision()), net->GetNetworkFPS());
-			output->SetStatus(str);	
+			sprintf(
+			    str,
+			    "TensorRT %i.%i.%i | %s | Network %.0f FPS",
+			    NV_TENSORRT_MAJOR,
+			    NV_TENSORRT_MINOR,
+			    NV_TENSORRT_PATCH,
+			    precisionTypeToStr(net->GetPrecision()),
+			    net->GetNetworkFPS()
+			);
+			output->SetStatus(str);
 
 			// check if the user quit
-			if( !output->IsStreaming() )
+			if (!output->IsStreaming())
 				break;
 		}
 
 		// print out timing info
 		net->PrintProfilerTimes();
 	}
-	
-	
+
 	/*
 	 * destroy resources
 	 */
 	LogVerbose("posenet: shutting down...\n");
-	
+
 	SAFE_DELETE(input);
 	SAFE_DELETE(output);
 	SAFE_DELETE(net);
-	
+
 	LogVerbose("posenet: shutdown complete.\n");
 	return 0;
 }
-

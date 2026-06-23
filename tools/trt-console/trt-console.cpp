@@ -22,12 +22,7 @@
 
 #include <stdio.h>
 
-
-
 // main entry point
-int main( int argc, char** argv )
-{
+int main(int argc, char** argv) {
 	return 0;
 }
-
-

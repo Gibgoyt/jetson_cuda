@@ -29,10 +29,8 @@
 #include "commandLine.h"
 #include "mat33.h"
 
-
 // print usage
-int print_usage()
-{
+int print_usage() {
 	printf("usage: odometry-console [-h] [--network NETWORK]\n");
 	printf("                        file_A file_B\n\n");
 	printf("Perform visual odometry estimation on a sequential pair of images\n\n");
@@ -47,65 +45,54 @@ int print_usage()
 	return 0;
 }
 
-
 // main entry point
-int main( int argc, char** argv )
-{
+int main(int argc, char** argv) {
 	/*
 	 * parse command line
 	 */
 	commandLine cmdLine(argc, argv);
 
-	if( cmdLine.GetPositionArgs() < 2 )
-	{
+	if (cmdLine.GetPositionArgs() < 2) {
 		printf("odometry-console:   two input image filenames required\n");
 		return print_usage();
 	}
 
-	const char* imgPath[] = { cmdLine.GetPosition(0), cmdLine.GetPosition(1) };
-	
+	const char* imgPath[] = {cmdLine.GetPosition(0), cmdLine.GetPosition(1)};
 
 	/*
 	 * load network
 	 */
 	odometryNet* net = odometryNet::Create(argc, argv);
 
-	if( !net )
-	{
+	if (!net) {
 		printf("odometry-console:  failed to load network\n");
 		return 0;
 	}
 
-
-	/* 
+	/*
 	 * load input images
 	 */
-	float4* imgInput[]  = { NULL, NULL };
-	int     imgWidth[]  = { 0, 0 };
-	int     imgHeight[] = { 0, 0 };
+	float4* imgInput[] = {NULL, NULL};
+	int imgWidth[] = {0, 0};
+	int imgHeight[] = {0, 0};
 
-	for( uint32_t n=0; n < 2; n++ )
-	{
-		if( !loadImageRGBA(imgPath[n], (float4**)&imgInput[n], &imgWidth[n], &imgHeight[n]) )
-		{
+	for (uint32_t n = 0; n < 2; n++) {
+		if (!loadImageRGBA(imgPath[n], (float4**)&imgInput[n], &imgWidth[n], &imgHeight[n])) {
 			printf("odometry-console:  failed to load image #%u '%s'\n", n, imgPath[n]);
 			return 0;
 		}
 	}
 
 	// verify images have the same size
-	if( imgWidth[0] != imgWidth[1] || imgHeight[0] != imgHeight[1] )
-	{
+	if (imgWidth[0] != imgWidth[1] || imgHeight[0] != imgHeight[1]) {
 		printf("odometry-console:  the two images must have the same dimensions\n");
 		return 0;
 	}
 
-
 	/*
 	 * estimate the odometry with the network
 	 */
-	if( !net->Process(imgInput[0], imgInput[1], imgWidth[0], imgHeight[0]) )
-	{
+	if (!net->Process(imgInput[0], imgInput[1], imgWidth[0], imgHeight[0])) {
 		printf("odometry-console:  failed to find homography\n");
 		return 0;
 	}
@@ -116,14 +103,13 @@ int main( int argc, char** argv )
 
 	printf("odometry:  ");
 
-	for( uint32_t n=0; n < numOutputs; n++ )
+	for (uint32_t n = 0; n < numOutputs; n++)
 		printf("%f ", outputs[n]);
 
 	printf("\n\n");
 
 	// print out performance info
 	net->PrintProfilerTimes();
-
 
 	/*
 	 * destroy resources
@@ -138,4 +124,3 @@ int main( int argc, char** argv )
 	printf("odometry-console:  shutdown complete\n");
 	return 0;
 }
-

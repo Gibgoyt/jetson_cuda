@@ -26,9 +26,7 @@
 #include "commandLine.h"
 #include "cudaMappedMemory.h"
 
-
-int usage()
-{
+int usage() {
 	printf("usage: stereonet-console [-h] [--network NETWORK]\n");
 	printf("                         [--colormap COLORMAP] [--filter-mode MODE]\n");
 	printf("                         file_left file_right file_out\n\n");
@@ -48,25 +46,22 @@ int usage()
 	return 0;
 }
 
-int main( int argc, char** argv )
-{
+int main(int argc, char** argv) {
 	/*
 	 * parse command line
 	 */
 	commandLine cmdLine(argc, argv);
 
-	if( cmdLine.GetFlag("help") )
+	if (cmdLine.GetFlag("help"))
 		return usage();
 
-	
 	/*
 	 * parse filename arguments
 	 */
-	const char* imgFilename[] = { cmdLine.GetPosition(0), cmdLine.GetPosition(1) };
+	const char* imgFilename[] = {cmdLine.GetPosition(0), cmdLine.GetPosition(1)};
 	const char* depthFilename = cmdLine.GetPosition(2);
 
-	if( !imgFilename[0] || !imgFilename[1] )
-	{
+	if (!imgFilename[0] || !imgFilename[1]) {
 		printf("stereonet-console:   left and right input filenames required\n");
 		return usage();
 	}
@@ -76,10 +71,9 @@ int main( int argc, char** argv )
 	/*
 	 * create stereo depth network
 	 */
-	stereoNet* net = stereoNet::Create(stereoNet::RESNET18_2D); //(argc, argv);
+	stereoNet* net = stereoNet::Create(stereoNet::RESNET18_2D);  //(argc, argv);
 
-	if( !net )
-	{
+	if (!net) {
 		printf("stereonet-console:   failed to initialize stereoNet\n");
 		return 0;
 	}
@@ -90,76 +84,79 @@ int main( int argc, char** argv )
 	// parse the desired filter mode
 	const cudaFilterMode filterMode = cudaFilterModeFromStr(cmdLine.GetString("filter-mode"));
 
-
 	/*
 	 * load images from disk
 	 */
-	float* imgInput[] = { NULL, NULL };
-	int    imgWidth   = 0;
-	int    imgHeight  = 0;
-		
-	for( int n=0; n < 2; n++ )
-	{
-		if( !loadImageRGBA(imgFilename[n], (float4**)&imgInput[n], &imgWidth, &imgHeight) )
-		{
+	float* imgInput[] = {NULL, NULL};
+	int imgWidth = 0;
+	int imgHeight = 0;
+
+	for (int n = 0; n < 2; n++) {
+		if (!loadImageRGBA(imgFilename[n], (float4**)&imgInput[n], &imgWidth, &imgHeight)) {
 			printf("stereonet-console:  failed to load image '%s'\n", imgFilename[n]);
 			return 0;
 		}
 	}
-
 
 	/*
 	 * allocate output depth map
 	 */
 	float* imgDepth = NULL;
 
-	if( !cudaAllocMapped((void**)&imgDepth, imgWidth * imgHeight * sizeof(float) * 4) )
-	{
-		printf("stereonet-console:  failed to allocate CUDA memory for output image (%ix%i)\n", imgWidth, imgHeight);
+	if (!cudaAllocMapped((void**)&imgDepth, imgWidth * imgHeight * sizeof(float) * 4)) {
+		printf(
+		    "stereonet-console:  failed to allocate CUDA memory for output image (%ix%i)\n",
+		    imgWidth,
+		    imgHeight
+		);
 		return 0;
 	}
-
 
 	/*
 	 * perform the depth mapping
 	 */
-	if( !net->Process(imgInput[0], imgInput[1], imgDepth, imgWidth, imgHeight, colormap, filterMode) )
-	{
+	if (!net->Process(
+	        imgInput[0],
+	        imgInput[1],
+	        imgDepth,
+	        imgWidth,
+	        imgHeight,
+	        colormap,
+	        filterMode
+	    )) {
 		printf("stereonet-console:  failed to process depth map\n");
 		return 0;
 	}
 
-	// wait for GPU to complete work			
+	// wait for GPU to complete work
 	CUDA(cudaDeviceSynchronize());
 
 	// print out performance info
 	net->PrintProfilerTimes();
 
-
 	/*
 	 * save output depth image
 	 */
-	if( depthFilename != NULL )
-	{
-		if( !saveImageRGBA(depthFilename, (float4*)imgDepth, imgWidth, imgHeight) )
+	if (depthFilename != NULL) {
+		if (!saveImageRGBA(depthFilename, (float4*)imgDepth, imgWidth, imgHeight))
 			printf("stereonet-console:  failed to save output image to '%s'\n", depthFilename);
 		else
 			printf("stereonet-console:  completed saving '%s'\n", depthFilename);
 	}
 
 #if 0
-	/*
-	 * save point cloud
-	 */
-	const char* pointCloudFilename = cmdLine.GetString("point-cloud");
+		/*
+		 * save point cloud
+		 */
+		const char* pointCloudFilename = cmdLine.GetString("point-cloud");
 
-	if( pointCloudFilename != NULL )
-	{
-		printf("stereonet-console:  saving point cloud to '%s'\n", pointCloudFilename);
+		if( pointCloudFilename != NULL )
+		{
+			printf("stereonet-console:  saving point cloud to '%s'\n", pointCloudFilename);
 		
-		if( !net->SavePointCloud(pointCloudFilename, imgCPU, imgWidth, imgHeight, cmdLine.GetString("calibration")) )
-			printf("stereonet-console:  failed to save point cloud to '%s'\n", pointCloudFilename);
-	}
+			if( !net->SavePointCloud(pointCloudFilename, imgCPU, imgWidth, imgHeight, cmdLine.GetString("calibration")) )
+				printf("stereonet-console:  failed to save point cloud to '%s'\n", pointCloudFilename);
+		}
 #endif
 
 	/*

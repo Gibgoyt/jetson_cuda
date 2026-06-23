@@ -30,48 +30,41 @@
 
 #include <locale.h>
 
-
 // constructor
-DepthWindow::DepthWindow()
-{
-	mCamera  = NULL;
+DepthWindow::DepthWindow() {
+	mCamera = NULL;
 	mDisplay = NULL;
 
-	mDepthNet   = NULL;
-	mStereoNet  = NULL;
-	mSegNet     = NULL;
+	mDepthNet = NULL;
+	mStereoNet = NULL;
+	mSegNet = NULL;
 	mPointCloud = NULL;
 
-	mImages[0]  = NULL;
-	mImages[1]  = NULL;
-	mDepthImg   = NULL;
+	mImages[0] = NULL;
+	mImages[1] = NULL;
+	mDepthImg = NULL;
 	mSegOverlay = NULL;
-	mSegMask    = NULL;
+	mSegMask = NULL;
 
-	mNewImages  = false;
-	mNumImages  = 0;
-	mImgWidth   = 0;
-	mImgHeight  = 0;
+	mNewImages = false;
+	mNumImages = 0;
+	mImgWidth = 0;
+	mImgHeight = 0;
 }
 
-
 // destructor
-DepthWindow::~DepthWindow()
-{
-	if( mDepthImg != NULL )
-	{
+DepthWindow::~DepthWindow() {
+	if (mDepthImg != NULL) {
 		CUDA(cudaFree(mDepthImg));
 		mDepthImg = NULL;
 	}
 
-	if( mSegOverlay != NULL )
-	{
+	if (mSegOverlay != NULL) {
 		CUDA(cudaFree(mSegOverlay));
 		mSegOverlay = NULL;
 	}
 
-	if( mSegMask != NULL )
-	{
+	if (mSegMask != NULL) {
 		CUDA(cudaFree(mSegMask));
 		mSegMask = NULL;
 	}
@@ -85,14 +78,11 @@ DepthWindow::~DepthWindow()
 	SAFE_DELETE(mDisplay);
 }
 
-
 // Create
-DepthWindow* DepthWindow::Create( commandLine& cmdLine )
-{
+DepthWindow* DepthWindow::Create(commandLine& cmdLine) {
 	DepthWindow* window = new DepthWindow();
 
-	if( !window || !window->init(cmdLine) )
-	{
+	if (!window || !window->init(cmdLine)) {
 		printf("depth-viewer:  DepthWindow::Create() failed\n");
 		return NULL;
 	}
@@ -100,31 +90,35 @@ DepthWindow* DepthWindow::Create( commandLine& cmdLine )
 	return window;
 }
 
-
 // init
-bool DepthWindow::init( commandLine& cmdLine )
-{
+bool DepthWindow::init(commandLine& cmdLine) {
 	const uint32_t numPositionArgs = cmdLine.GetPositionArgs();
 
 	// either load images from disk, or open camera device
-	if( numPositionArgs > 0 )
-	{
-		for( uint32_t n=0; n < numPositionArgs && n < 2; n++ )
-		{
+	if (numPositionArgs > 0) {
+		for (uint32_t n = 0; n < numPositionArgs && n < 2; n++) {
 			int imgWidth = 0;
 			int imgHeight = 0;
 
-			if( !loadImageRGBA(cmdLine.GetPosition(n), (float4**)&mImages[n], &imgWidth, &imgHeight) )
+			if (!loadImageRGBA(
+			        cmdLine.GetPosition(n),
+			        (float4**)&mImages[n],
+			        &imgWidth,
+			        &imgHeight
+			    ))
 				return false;
 
-			if( n == 0 )
-			{
+			if (n == 0) {
 				mImgWidth = imgWidth;
 				mImgHeight = imgHeight;
-			}
-			else if( imgWidth != mImgWidth || imgHeight != mImgHeight )
-			{
-				printf("depth-viewer:  image dimensions must match (%ux%u vs %ix%i)\n", mImgWidth, mImgHeight, imgWidth, imgHeight);
+			} else if (imgWidth != mImgWidth || imgHeight != mImgHeight) {
+				printf(
+				    "depth-viewer:  image dimensions must match (%ux%u vs %ix%i)\n",
+				    mImgWidth,
+				    mImgHeight,
+				    imgWidth,
+				    imgHeight
+				);
 				return false;
 			}
 
@@ -132,15 +126,14 @@ bool DepthWindow::init( commandLine& cmdLine )
 		}
 
 		mNewImages = true;
-	}
-	else
-	{
-		mCamera = gstCamera::Create(cmdLine.GetInt("width", gstCamera::DefaultWidth),
-							   cmdLine.GetInt("height", gstCamera::DefaultHeight),
-							   cmdLine.GetString("camera"));
+	} else {
+		mCamera = gstCamera::Create(
+		    cmdLine.GetInt("width", gstCamera::DefaultWidth),
+		    cmdLine.GetInt("height", gstCamera::DefaultHeight),
+		    cmdLine.GetString("camera")
+		);
 
-		if( !mCamera )
-		{
+		if (!mCamera) {
 			printf("depth-viewer:  failed to initialize camera device\n");
 			return false;
 		}
@@ -152,22 +145,20 @@ bool DepthWindow::init( commandLine& cmdLine )
 	}
 
 	// either load stereo or mono-depth network
-	if( mNumImages > 1 || cmdLine.GetString("stereo") != NULL )
-	{
-		mStereoNet = stereoNet::Create(stereoNet::NetworkTypeFromStr(cmdLine.GetString("stereo", "resnet18-2d")));
+	if (mNumImages > 1 || cmdLine.GetString("stereo") != NULL) {
+		mStereoNet = stereoNet::Create(
+		    stereoNet::NetworkTypeFromStr(cmdLine.GetString("stereo", "resnet18-2d"))
+		);
 
-		if( !mStereoNet )
-		{
+		if (!mStereoNet) {
 			printf("depth-viewer:  failed to load stereo network\n");
 			return false;
 		}
-	}
-	else
-	{
-		mDepthNet = depthNet::Create(depthNet::NetworkTypeFromStr(cmdLine.GetString("depth", "mobilenet")));
+	} else {
+		mDepthNet =
+		    depthNet::Create(depthNet::NetworkTypeFromStr(cmdLine.GetString("depth", "mobilenet")));
 
-		if( !mDepthNet )
-		{
+		if (!mDepthNet) {
 			printf("depth-viewer:  failed to load mono-depth network\n");
 			return false;
 		}
@@ -176,11 +167,10 @@ bool DepthWindow::init( commandLine& cmdLine )
 	// load segmentation network if desired
 	const char* segModel = cmdLine.GetString("segmentation");
 
-	if( segModel != NULL )
-	{
+	if (segModel != NULL) {
 		mSegNet = segNet::Create(segNet::NetworkTypeFromStr(segModel));
 
-		if( !mSegNet )
+		if (!mSegNet)
 			printf("depth-viewer:  failed to load segmentation network\n");
 		else
 			mSegNet->SetOverlayAlpha(cmdLine.GetFloat("alpha", 120.0f));
@@ -193,8 +183,7 @@ bool DepthWindow::init( commandLine& cmdLine )
 	// create point cloud
 	mPointCloud = cudaPointCloud::Create();
 
-	if( !mPointCloud ) 
-	{
+	if (!mPointCloud) {
 		printf("depth-viewer:  failed to create point cloud\n");
 		return false;
 	}
@@ -202,14 +191,13 @@ bool DepthWindow::init( commandLine& cmdLine )
 	// load camera calibration
 	const char* calibration = cmdLine.GetString("calibration");
 
-	if( calibration != NULL )
+	if (calibration != NULL)
 		mPointCloud->SetCalibration(calibration);
 
 	// create openGL window
 	mDisplay = glDisplay::Create();
 
-	if( !mDisplay ) 
-	{
+	if (!mDisplay) {
 		printf("depth-viewer:  failed to create openGL display\n");
 		return false;
 	}
@@ -219,57 +207,57 @@ bool DepthWindow::init( commandLine& cmdLine )
 
 	return true;
 }
-	
+
 // process
-bool DepthWindow::process()
-{
-	float*   depthField  = NULL;
-	uint32_t depthWidth  = 0;
+bool DepthWindow::process() {
+	float* depthField = NULL;
+	uint32_t depthWidth = 0;
 	uint32_t depthHeight = 0;
 
 	// process depth
-	if( mDepthNet != NULL )
-	{
-		if( !mDepthNet->Process(mImages[0], mImgWidth, mImgHeight, 
-						    mDepthImg, mImgWidth/2, mImgHeight/2, 
-						    mColormap, mFilterMode) )
-		{
+	if (mDepthNet != NULL) {
+		if (!mDepthNet->Process(
+		        mImages[0],
+		        mImgWidth,
+		        mImgHeight,
+		        mDepthImg,
+		        mImgWidth / 2,
+		        mImgHeight / 2,
+		        mColormap,
+		        mFilterMode
+		    )) {
 			printf("depth-viewer:  failed to process mono depth map\n");
 			return false;
 		}
 
-		depthField  = mDepthNet->GetDepthField();
-		depthWidth  = mDepthNet->GetDepthFieldWidth();
+		depthField = mDepthNet->GetDepthField();
+		depthWidth = mDepthNet->GetDepthFieldWidth();
 		depthHeight = mDepthNet->GetDepthFieldHeight();
 
-		// wait for GPU to complete work			
+		// wait for GPU to complete work
 		CUDA(cudaDeviceSynchronize());
 
 		// print out performance info
 		mDepthNet->PrintProfilerTimes();
-	}
-	else if( mStereoNet != NULL )
-	{
+	} else if (mStereoNet != NULL) {
 		// TODO
 	}
 
 	// process segmentation
-	if( mSegNet != NULL )
-	{
-		if( !mSegNet->Process(mImages[0], mImgWidth, mImgHeight) )
-		{
+	if (mSegNet != NULL) {
+		if (!mSegNet->Process(mImages[0], mImgWidth, mImgHeight)) {
 			printf("depth-viewer:  failed to process segmentation\n");
 			return false;
 		}
-		
-		if( !mSegNet->Overlay(mSegOverlay, mImgWidth, mImgHeight, (segNet::FilterMode)mFilterMode) )
-		{
+
+		if (!mSegNet
+		         ->Overlay(mSegOverlay, mImgWidth, mImgHeight, (segNet::FilterMode)mFilterMode)) {
 			printf("depth-viewer:  failed to process segmentation overlay.\n");
 			return false;
 		}
 
-		if( !mSegNet->Mask(mSegMask, mImgWidth/2, mImgHeight/2, (segNet::FilterMode)mFilterMode) )
-		{
+		if (!mSegNet
+		         ->Mask(mSegMask, mImgWidth / 2, mImgHeight / 2, (segNet::FilterMode)mFilterMode)) {
 			printf("depth-viewer:  failed to process segmentation mask.\n");
 			return false;
 		}
@@ -277,10 +265,15 @@ bool DepthWindow::process()
 		mImages[0] = mSegOverlay;
 	}
 
-
 	// extract point cloud
-	if( !mPointCloud->Extract(depthField, depthWidth, depthHeight, (float4*)mImages[0], mImgWidth, mImgHeight) )
-	{
+	if (!mPointCloud->Extract(
+	        depthField,
+	        depthWidth,
+	        depthHeight,
+	        (float4*)mImages[0],
+	        mImgWidth,
+	        mImgHeight
+	    )) {
 		printf("depth-viewer:  failed to extract point cloud\n");
 		return false;
 	}
@@ -288,71 +281,60 @@ bool DepthWindow::process()
 	return true;
 }
 
-
 // Render
-bool DepthWindow::Render()
-{
+bool DepthWindow::Render() {
 	// capture RGBA image
-	if( mCamera != NULL )
-	{
+	if (mCamera != NULL) {
 		float* imgRGBA = NULL;
 
-		if( mCamera->CaptureRGBA(&imgRGBA) )
-		{
+		if (mCamera->CaptureRGBA(&imgRGBA)) {
 			mImages[0] = imgRGBA;
-			mImgWidth  = mCamera->GetWidth();
+			mImgWidth = mCamera->GetWidth();
 			mImgHeight = mCamera->GetHeight();
-		}
-		else
-		{
+		} else {
 			printf("depth-viewer:  failed to capture RGBA image from camera\n");
 		}
 	}
 
 	// allocate depth image
-	if( !mDepthImg )
-	{
-		if( CUDA_FAILED(cudaMalloc(&mDepthImg, mImgWidth/2 * mImgHeight/2 * sizeof(float4))) )
+	if (!mDepthImg) {
+		if (CUDA_FAILED(cudaMalloc(&mDepthImg, mImgWidth / 2 * mImgHeight / 2 * sizeof(float4))))
 			return false;
 	}
 
 	// allocate segmentation images
-	if( mSegNet != NULL )
-	{
-		if( !mSegOverlay )
-		{
-			if( CUDA_FAILED(cudaMalloc(&mSegOverlay, mImgWidth * mImgHeight * sizeof(float4))) )
+	if (mSegNet != NULL) {
+		if (!mSegOverlay) {
+			if (CUDA_FAILED(cudaMalloc(&mSegOverlay, mImgWidth * mImgHeight * sizeof(float4))))
 				return false;
 		}
 
-		if( !mSegMask )
-		{
-			if( CUDA_FAILED(cudaMalloc(&mSegMask, mImgWidth/2 * mImgHeight/2 * sizeof(float4))) )
+		if (!mSegMask) {
+			if (CUDA_FAILED(cudaMalloc(&mSegMask, mImgWidth / 2 * mImgHeight / 2 * sizeof(float4))))
 				return false;
 		}
 	}
 
 	// process image(s)
-	if( mCamera != NULL || mNewImages )
-	{
-		if( !process() )
+	if (mCamera != NULL || mNewImages) {
+		if (!process())
 			printf("depth-viewer:  failed to process latest frame\n");
 
 		mNewImages = false;
 	}
 
 	// update display
-	if( mDisplay != NULL )
-	{
+	if (mDisplay != NULL) {
 		// begin the frame
 		mDisplay->BeginRender();
 
 		// render the images
 		mDisplay->Render(mImages[0], mImgWidth, mImgHeight);
-		mDisplay->Render(mDepthImg, mImgWidth/2, mImgHeight/2, mImgWidth);
+		mDisplay->Render(mDepthImg, mImgWidth / 2, mImgHeight / 2, mImgWidth);
 
-		if( mSegNet )
-			mDisplay->Render(mSegMask, mImgWidth/2, mImgHeight/2, mImgWidth, mImgHeight/2 + 30);
+		if (mSegNet)
+			mDisplay
+			    ->Render(mSegMask, mImgWidth / 2, mImgHeight / 2, mImgWidth, mImgHeight / 2 + 30);
 
 		// render the point cloud
 		mDisplay->SetViewport(0, mImgHeight + 30, mDisplay->GetWidth(), mDisplay->GetHeight());
@@ -362,7 +344,12 @@ bool DepthWindow::Render()
 
 		// update the status bar
 		char str[256];
-		sprintf(str, "Depth Viewer | %'u Points | %.0f FPS", mPointCloud->GetNumPoints(), mDisplay->GetFPS());
+		sprintf(
+		    str,
+		    "Depth Viewer | %'u Points | %.0f FPS",
+		    mPointCloud->GetNumPoints(),
+		    mDisplay->GetFPS()
+		);
 		mDisplay->SetTitle(str);
 
 		// present the frame
@@ -370,28 +357,20 @@ bool DepthWindow::Render()
 	}
 }
 
-
 // IsOpen
-bool DepthWindow::IsOpen() const
-{
+bool DepthWindow::IsOpen() const {
 	return mDisplay->IsOpen();
 }
 
-
 // IsClosed
-bool DepthWindow::IsClosed() const
-{
+bool DepthWindow::IsClosed() const {
 	return mDisplay->IsClosed();
 }
 
-
 // IsStreaming
-bool DepthWindow::IsStreaming() const
-{
-	if( !mCamera )
+bool DepthWindow::IsStreaming() const {
+	if (!mCamera)
 		return false;
 
 	return mCamera->IsStreaming();
 }
-
-

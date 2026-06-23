@@ -33,98 +33,95 @@
 
 #include "logging.h"
 
-
-static PyMethodDef pyInferenceFunctions[] =
-{
-	{ NULL, NULL, 0, NULL }
-};
-
+static PyMethodDef pyInferenceFunctions[] = {{NULL, NULL, 0, NULL}};
 
 // register object types
-bool PyInference_Register( PyObject* module )
-{
+bool PyInference_Register(PyObject* module) {
 	LogDebug(LOG_PY_INFERENCE "registering module types...\n");
-	
-	if( !PyTensorNet_Register(module) )
+
+	if (!PyTensorNet_Register(module))
 		LogError(LOG_PY_INFERENCE "failed to register tensorNet type\n");
-	
-	if( !PyImageNet_Register(module) )
+
+	if (!PyImageNet_Register(module))
 		LogError(LOG_PY_INFERENCE "failed to register imageNet type\n");
-	
-	if( !PyDepthNet_Register(module) )
+
+	if (!PyDepthNet_Register(module))
 		LogError(LOG_PY_INFERENCE "failed to register depthNet type\n");
-	
-	if( !PyDetectNet_Register(module) )
+
+	if (!PyDetectNet_Register(module))
 		LogError(LOG_PY_INFERENCE "failed to register detectNet type\n");
 
-	if( !PyPoseNet_Register(module) )
+	if (!PyPoseNet_Register(module))
 		LogError(LOG_PY_INFERENCE "failed to register poseNet type\n");
-	
-	if( !PySegNet_Register(module) )
+
+	if (!PySegNet_Register(module))
 		LogError(LOG_PY_INFERENCE "failed to register segNet type\n");
 
-	if( !PyActionNet_Register(module) )
+	if (!PyActionNet_Register(module))
 		LogError(LOG_PY_INFERENCE "failed to register actionNet type\n");
-	
-	if( !PyBackgroundNet_Register(module) )
+
+	if (!PyBackgroundNet_Register(module))
 		LogError(LOG_PY_INFERENCE "failed to register backgroundNet type\n");
-	
+
 	LogDebug(LOG_PY_INFERENCE "done registering module types\n");
 	return true;
 }
 
 #ifdef PYTHON_3
-static struct PyModuleDef pyInferenceModuleDef = {
-        PyModuleDef_HEAD_INIT,
-        "jetson_inference_python",
-        NULL,
-        -1,
-        pyInferenceFunctions
-};
+	static struct PyModuleDef pyInferenceModuleDef =
+	    {PyModuleDef_HEAD_INIT, "jetson_inference_python", NULL, -1, pyInferenceFunctions};
 
-PyMODINIT_FUNC
-PyInit_jetson_inference_python(void)
-{
-	LogDebug(LOG_PY_INFERENCE "initializing Python %i.%i bindings...\n", PY_MAJOR_VERSION, PY_MINOR_VERSION);
-	
-	// create the module
-	PyObject* module = PyModule_Create(&pyInferenceModuleDef);
-	
-	if( !module )
-	{
-		LogError(LOG_PY_INFERENCE "PyModule_Create() failed\n");
-		return NULL;
+	PyMODINIT_FUNC PyInit_jetson_inference_python(void) {
+		LogDebug(
+		    LOG_PY_INFERENCE "initializing Python %i.%i bindings...\n",
+		    PY_MAJOR_VERSION,
+		    PY_MINOR_VERSION
+		);
+
+		// create the module
+		PyObject* module = PyModule_Create(&pyInferenceModuleDef);
+
+		if (!module) {
+			LogError(LOG_PY_INFERENCE "PyModule_Create() failed\n");
+			return NULL;
+		}
+
+		// register types
+		if (!PyInference_Register(module))
+			LogError(LOG_PY_INFERENCE "failed to register module types\n");
+
+		LogDebug(
+		    LOG_PY_INFERENCE "done Python %i.%i binding initialization\n",
+		    PY_MAJOR_VERSION,
+		    PY_MINOR_VERSION
+		);
+		return module;
 	}
-	
-	// register types
-	if( !PyInference_Register(module) )
-		LogError(LOG_PY_INFERENCE "failed to register module types\n");
-	
-	LogDebug(LOG_PY_INFERENCE "done Python %i.%i binding initialization\n", PY_MAJOR_VERSION, PY_MINOR_VERSION);
-	return module;
-}
 
 #else
-PyMODINIT_FUNC
-initjetson_inference_python(void)
-{
-	LogDebug(LOG_PY_INFERENCE "initializing Python %i.%i bindings...\n", PY_MAJOR_VERSION, PY_MINOR_VERSION);
-	
-	// create the module
-	PyObject* module = Py_InitModule("jetson_inference_python", pyInferenceFunctions);
-	
-	if( !module )
-	{
-		LogError(LOG_PY_INFERENCE "Py_InitModule() failed\n");
-		return;
+	PyMODINIT_FUNC initjetson_inference_python(void) {
+		LogDebug(
+		    LOG_PY_INFERENCE "initializing Python %i.%i bindings...\n",
+		    PY_MAJOR_VERSION,
+		    PY_MINOR_VERSION
+		);
+
+		// create the module
+		PyObject* module = Py_InitModule("jetson_inference_python", pyInferenceFunctions);
+
+		if (!module) {
+			LogError(LOG_PY_INFERENCE "Py_InitModule() failed\n");
+			return;
+		}
+
+		// register types
+		if (!PyInference_Register(module))
+			LogError(LOG_PY_INFERENCE "failed to register module types\n");
+
+		LogDebug(
+		    LOG_PY_INFERENCE "done Python %i.%i binding initialization\n",
+		    PY_MAJOR_VERSION,
+		    PY_MINOR_VERSION
+		);
 	}
-	
-	// register types
-	if( !PyInference_Register(module) )
-		LogError(LOG_PY_INFERENCE "failed to register module types\n");
-	
-	LogDebug(LOG_PY_INFERENCE "done Python %i.%i binding initialization\n", PY_MAJOR_VERSION, PY_MINOR_VERSION);
-}
 #endif
-
-

@@ -32,61 +32,57 @@
 #include "stereoNet.h"
 #include "segNet.h"
 
+	// forward declarations
+	class gstCamera;
+	class glDisplay;
 
-// forward declarations
-class gstCamera;
-class glDisplay;
+	/*
+	 * Depth viewer window
+	 */
+	class DepthWindow {
+	public:
+		// create the window and processing objects
+		static DepthWindow* Create(commandLine& cmdLine);
 
+		// close the window and camera object
+		~DepthWindow();
 
-/*
- * Depth viewer window
- */
-class DepthWindow
-{
-public:
-	// create the window and processing objects
-	static DepthWindow* Create( commandLine& cmdLine );
+		// capture & render next camera frame
+		bool Render();
 
-	// close the window and camera object
-	~DepthWindow();
+		// window open/closed status
+		bool IsOpen() const;
+		bool IsClosed() const;
 
-	// capture & render next camera frame
-	bool Render();
+		// camera streaming status
+		bool IsStreaming() const;
 
-	// window open/closed status
-	bool IsOpen() const;
-	bool IsClosed() const;
+	protected:
+		DepthWindow();
 
-	// camera streaming status
-	bool IsStreaming() const;
+		bool init(commandLine& cmdLine);
+		bool process();
 
-protected:
-	DepthWindow();
+		gstCamera* mCamera;
+		glDisplay* mDisplay;
 
-	bool init( commandLine& cmdLine );
-	bool process();
+		depthNet* mDepthNet;
+		stereoNet* mStereoNet;
+		segNet* mSegNet;
 
-	gstCamera* mCamera;
-	glDisplay* mDisplay;
+		float* mImages[2];
+		float* mDepthImg;
+		float* mSegOverlay;
+		float* mSegMask;
 
-	depthNet*  mDepthNet;
-	stereoNet* mStereoNet;
-	segNet*	 mSegNet;
+		bool mNewImages;
+		uint32_t mNumImages;
+		uint32_t mImgWidth;
+		uint32_t mImgHeight;
 
-	float* mImages[2];
-	float* mDepthImg;
-	float* mSegOverlay;
-	float* mSegMask;
-
-	bool     mNewImages;
-	uint32_t mNumImages;
-	uint32_t mImgWidth;
-	uint32_t mImgHeight;
-	
-	cudaPointCloud*  mPointCloud;
-	cudaColormapType mColormap;
-	cudaFilterMode   mFilterMode;
-};
+		cudaPointCloud* mPointCloud;
+		cudaColormapType mColormap;
+		cudaFilterMode mFilterMode;
+	};
 
 #endif
-

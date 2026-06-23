@@ -29,58 +29,58 @@
 #include <string>
 #include <vector>
 
-
 #if NV_TENSORRT_MAJOR >= 4
 
-/**
- * Random INT8 Calibrator.
- * This calibrator is for testing performance without needing
- * sample datasets to generate the INT8 calibration table.
- */
-class randInt8Calibrator : public nvinfer1::IInt8EntropyCalibrator
-{
-public:
-	/**
-	 * Constructor
-	 */
-	randInt8Calibrator( int totalSamples, std::string cacheFile, 
-					const std::map<std::string, nvinfer1::Dims3>& inputDimensions );
+		/**
+		 * Random INT8 Calibrator.
+		 * This calibrator is for testing performance without needing
+		 * sample datasets to generate the INT8 calibration table.
+		 */
+		class randInt8Calibrator : public nvinfer1::IInt8EntropyCalibrator {
+		public:
+			/**
+			 * Constructor
+			 */
+			randInt8Calibrator(
+			    int totalSamples,
+			    std::string cacheFile,
+			    const std::map<std::string, nvinfer1::Dims3>& inputDimensions
+			);
 
-	/**
-	 * Destructor
-	 */
-	~randInt8Calibrator();
+			/**
+			 * Destructor
+			 */
+			~randInt8Calibrator();
 
-	/**
-	 * getBatchSize()
-	 */
-	inline int getBatchSize() const NOEXCEPT override	{ return 1; }
+			/**
+			 * getBatchSize()
+			 */
+			inline int getBatchSize() const NOEXCEPT override { return 1; }
 
-	/**
-	 * getBatch()
-	 */
-	bool getBatch(void* bindings[], const char* names[], int nbBindings) NOEXCEPT override;
-	
-	/**
-	 * readCalibrationCache()
-	 */
-	const void* readCalibrationCache(size_t& length) NOEXCEPT override;
-    
-	/**
-	 * writeCalibrationCache()
-	 */
-	virtual void writeCalibrationCache(const void*, size_t) NOEXCEPT override;
+			/**
+			 * getBatch()
+			 */
+			bool getBatch(void* bindings[], const char* names[], int nbBindings) NOEXCEPT override;
 
-private:
-	int mTotalSamples;
-	int mCurrentSample;
+			/**
+			 * readCalibrationCache()
+			 */
+			const void* readCalibrationCache(size_t& length) NOEXCEPT override;
 
-	std::string mCacheFile;
-	std::map<std::string, void*> mInputDeviceBuffers;
-	std::map<std::string, nvinfer1::Dims3> mInputDimensions;
-	std::vector<char> mCalibrationCache;
-};
+			/**
+			 * writeCalibrationCache()
+			 */
+			virtual void writeCalibrationCache(const void*, size_t) NOEXCEPT override;
+
+		private:
+			int mTotalSamples;
+			int mCurrentSample;
+
+			std::string mCacheFile;
+			std::map<std::string, void*> mInputDeviceBuffers;
+			std::map<std::string, nvinfer1::Dims3> mInputDimensions;
+			std::vector<char> mCalibrationCache;
+		};
 
 #endif
 #endif
-

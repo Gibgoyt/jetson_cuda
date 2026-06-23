@@ -2,8 +2,8 @@
 
 /**
  * @defgroup deepVision DNN Vision Library (jetson-inference)
- * C++ runtime library for supporting deep vision neural network models and inferencing with TensorRT.
- * Available network primitives currently include:  
+ * C++ runtime library for supporting deep vision neural network models and inferencing with
+ * TensorRT. Available network primitives currently include:
  *   - \ref imageNet for image recognition
  *   - \ref detectNet for object detection + localization
  *   - \ref segNet for semantic segmentation
@@ -14,7 +14,6 @@
  *
  * @see \ref util for various utilities, including \ref cuda functions and \ref video interfaces.
  */
-
 
 /**
  * @defgroup tensorNet tensorNet
@@ -53,7 +52,7 @@
  * Action/activity recognition DNN
  * @ingroup deepVision
  */
- 
+
 /**
  * @defgroup depthNet depthNet
  * Mono depth estimation from monocular images.
@@ -65,19 +64,19 @@
  * Foreground/background segmentation and removal DNN
  * @ingroup deepVision
  */
- 
+
 /**
  * @defgroup objectTracker Object Tracking
  * Object tracking used by detectNet
  * @ingroup deepVision
  */
- 
+
 /**
  * @defgroup modelDownloader Model Downloader
  * Utilities for automatically downloading pre-trained models.
  * @ingroup deepVision
  */
- 
+
 /**
  * @defgroup util Utilities Library (jetson-utils)
  * Tools and utilities for video streaming, codecs, display, and CUDA processing.
@@ -140,7 +139,7 @@
  * Drawing basic 2D shapes using CUDA.
  * @ingroup cuda
  */
- 
+
 /**
  * @defgroup cudaError Error Checking
  * Error checking and logging macros.
@@ -158,7 +157,7 @@
  * Allocation of CUDA mapped zero-copy memory.
  * @ingroup cuda
  */
- 
+
 /**
  * @defgroup normalization Normalization
  * Normalize the pixel intensities of an image between two ranges.
@@ -194,7 +193,7 @@
  * Various image warps and matrix transforms.
  * @ingroup cuda
  */
- 
+
 /**
  * @defgroup filesystem Filesystem
  * Functions for listing files in directories and manipulating file paths.
@@ -212,7 +211,7 @@
  * Loading and saving image files from disk.
  * @ingroup util
  */
- 
+
 /**
  * @defgroup input Input
  * HID input devices including gamepad controllers, joysticks, and keyboard.
@@ -230,19 +229,19 @@
  * 3x3 matrix operations from `mat33.h`
  * @ingroup util
  */
- 
+
 /**
  * @defgroup threads Multithreading
  * Mutex, events, threads, and process objects based on pthreads.
  * @ingroup util
  */
- 
+
 /**
  * @defgroup network Networking
  * TCP/UDP sockets and IP address manipulation.
  * @ingroup util
  */
- 
+
 /**
  * @defgroup OpenGL OpenGL
  * OpenGL textures and display window (X11/GLX).
@@ -260,4 +259,3 @@
  * videoSource and videoOutput APIs for input and output video streams.
  * @ingroup util
  */
-
