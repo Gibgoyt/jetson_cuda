@@ -7,70 +7,44 @@ namespace trt_pose {
 namespace parse {
 namespace utils {
 
-class CoverTable
-{
+class CoverTable {
 public:
-  CoverTable(int nrows, int ncols) : nrows(nrows), ncols(ncols)
-  {
-    rows.resize(nrows);
-    cols.resize(ncols);
-  }
+	CoverTable(int nrows, int ncols) : nrows(nrows), ncols(ncols) {
+		rows.resize(nrows);
+		cols.resize(ncols);
+	}
 
-  inline void coverRow(int row)
-  {
-    rows[row] = 1;
-  }
+	inline void coverRow(int row) { rows[row] = 1; }
 
-  inline void coverCol(int col)
-  {
-    cols[col] = 1;
-  }
+	inline void coverCol(int col) { cols[col] = 1; }
 
-  inline void uncoverRow(int row)
-  {
-    rows[row] = 0;
-  }
+	inline void uncoverRow(int row) { rows[row] = 0; }
 
-  inline void uncoverCol(int col)
-  {
-    cols[col] = 0;
-  }
+	inline void uncoverCol(int col) { cols[col] = 0; }
 
-  inline bool isCovered(int row, int col) const
-  {
-    return rows[row] || cols[col];
-  }
+	inline bool isCovered(int row, int col) const { return rows[row] || cols[col]; }
 
-  inline bool isRowCovered(int row) const
-  {
-    return rows[row];
-  }
-  
-  inline bool isColCovered(int col) const
-  {
-    return cols[col];
-  }
+	inline bool isRowCovered(int row) const { return rows[row]; }
 
-  inline void clear()
-  {
-    for (int i = 0; i < nrows; i++)
-    {
-      uncoverRow(i);
-    }
-    for (int j = 0; j < ncols; j++)
-    {
-      uncoverCol(j);
-    }
-  }
+	inline bool isColCovered(int col) const { return cols[col]; }
 
-  const int nrows;
-  const int ncols;
+	inline void clear() {
+		for (int i = 0; i < nrows; i++) {
+			uncoverRow(i);
+		}
+		for (int j = 0; j < ncols; j++) {
+			uncoverCol(j);
+		}
+	}
+
+	const int nrows;
+	const int ncols;
 
 private:
-  std::vector<bool> rows;
-  std::vector<bool> cols;
+	std::vector<bool> rows;
+	std::vector<bool> cols;
 };
 
-} // namespace utils
-} // namespace parse
-} // namespace trt_pose
+}  // namespace utils
+}  // namespace parse
+}  // namespace trt_pose
