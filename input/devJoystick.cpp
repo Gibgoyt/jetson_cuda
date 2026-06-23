@@ -30,59 +30,46 @@
 
 #include "logging.h"
 
-
 // "linux/input-event-codes.h"
 
-
 // constructor
-JoystickDevice::JoystickDevice()
-{
+JoystickDevice::JoystickDevice() {
 	mFD = -1;
 
 	memset(mAxisRaw, 0, sizeof(mAxisRaw));
 	memset(mAxisNorm, 0, sizeof(mAxisNorm));
 }
 
-
 // destructor
-JoystickDevice::~JoystickDevice()
-{
-
-}
-
+JoystickDevice::~JoystickDevice() {}
 
 // Create
-JoystickDevice* JoystickDevice::Create( const char* name )
-{
+JoystickDevice* JoystickDevice::Create(const char* name) {
 	std::string path = InputDevices::FindPathByName(name);
 
-	if( path.length() == 0 )
-	{
+	if (path.length() == 0) {
 		LogError("joystick -- failed to find path for device '%s'\n", name);
 		return NULL;
 	}
 
 	const int fd = open(path.c_str(), O_RDONLY);
 
-	if( fd == -1 )
-	{
+	if (fd == -1) {
 		LogError("joystick -- failed to open %s\n", path.c_str());
 		return NULL;
 	}
 
 	JoystickDevice* joy = new JoystickDevice();
 
-	joy->mFD   = fd;
+	joy->mFD = fd;
 	joy->mPath = path;
 
 	LogSuccess("joystick -- opened device %s\n", path.c_str());
 	return joy;
 }
 
-
 // Poll
-bool JoystickDevice::Poll( uint32_t timeout )
-{
+bool JoystickDevice::Poll(uint32_t timeout) {
 	const uint32_t max_ev = 64;
 	struct input_event ev[max_ev];
 
@@ -91,53 +78,57 @@ bool JoystickDevice::Poll( uint32_t timeout )
 	FD_SET(mFD, &fds);
 
 	struct timeval tv;
- 
-	tv.tv_sec  = 0;
-	tv.tv_usec = timeout*1000;
+
+	tv.tv_sec = 0;
+	tv.tv_usec = timeout * 1000;
 
 	const int result = select(mFD + 1, &fds, NULL, NULL, &tv);
 
-	if( result == -1 ) 
-	{
+	if (result == -1) {
 		LogError("joystick -- select() failed (errno=%i) (%s)\n", errno, strerror(errno));
 		return false;
-	}
-	else if( result == 0 )
-	{
-		if( /*mDebug &&*/ timeout > 0 )
+	} else if (result == 0) {
+		if (/*mDebug &&*/ timeout > 0)
 			LogDebug("joystick -- select() timed out...\n");
 
-		return false;	// timeout, not necessarily an error (TRY_AGAIN)
+		return false;  // timeout, not necessarily an error (TRY_AGAIN)
 	}
 
 	const int bytesRead = read(mFD, ev, sizeof(struct input_event) * max_ev);
 
-	if( bytesRead < (int)sizeof(struct input_event) ) 
-	{
-		LogError("joystick -- read() expected %d bytes, got %d\n", (int)sizeof(struct input_event), bytesRead);
+	if (bytesRead < (int)sizeof(struct input_event)) {
+		LogError(
+		    "joystick -- read() expected %d bytes, got %d\n",
+		    (int)sizeof(struct input_event),
+		    bytesRead
+		);
 		return false;
 	}
 
 	const int num_ev = bytesRead / sizeof(struct input_event);
 
-	for( int i = 0; i < num_ev; i++ ) 
-	{
-		if( ev[i].type == EV_ABS )
-		{
-			if( ev[i].code >= MAX_AXIS )
+	for (int i = 0; i < num_ev; i++) {
+		if (ev[i].type == EV_ABS) {
+			if (ev[i].code >= MAX_AXIS)
 				continue;
 
 			mAxisRaw[ev[i].code] = ev[i].value;
 
-			LogDebug("joystick -- axis %i, value %i  type=%i\n", (int)ev[i].code, ev[i].value, (int)ev[i].type);
-		}
-		else if( ev[i].type != 0 )
-		{
-			LogDebug("joystick -- event %i, code %i, value %i\n", (int)ev[i].type, (int)ev[i].code, ev[i].value);
+			LogDebug(
+			    "joystick -- axis %i, value %i  type=%i\n",
+			    (int)ev[i].code,
+			    ev[i].value,
+			    (int)ev[i].type
+			);
+		} else if (ev[i].type != 0) {
+			LogDebug(
+			    "joystick -- event %i, code %i, value %i\n",
+			    (int)ev[i].type,
+			    (int)ev[i].code,
+			    ev[i].value
+			);
 		}
 	}
 
-	return true;	
+	return true;
 }
-
-

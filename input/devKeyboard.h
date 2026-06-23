@@ -30,45 +30,44 @@
 
 #include <linux/input-event-codes.h>
 
-
-/**
- * Keyboard device
- * @ingroup input
- */
-class KeyboardDevice
-{
-public:
 	/**
-	 * Create device
+	 * Keyboard device
+	 * @ingroup input
 	 */
-	static KeyboardDevice* Create( const char* path="/dev/input/by-path/platform-i8042-serio-0-event-kbd" );
+	class KeyboardDevice {
+	public:
+		/**
+		 * Create device
+		 */
+		static KeyboardDevice* Create(
+		    const char* path = "/dev/input/by-path/platform-i8042-serio-0-event-kbd"
+		);
 
-	/**
-	 * Destructor
-	 */
-	~KeyboardDevice();
+		/**
+		 * Destructor
+		 */
+		~KeyboardDevice();
 
-	/**
-	 * Poll the device for updates
-	 */
-	bool Poll( uint32_t timeout=0 );
+		/**
+		 * Poll the device for updates
+		 */
+		bool Poll(uint32_t timeout = 0);
 
-	/**
-	 * Check if a particular key is pressed
-	 */
-	bool KeyDown( uint32_t code ) const;
+		/**
+		 * Check if a particular key is pressed
+		 */
+		bool KeyDown(uint32_t code) const;
 
-protected:
-	// constructor
-	KeyboardDevice();
+	protected:
+		// constructor
+		KeyboardDevice();
 
-	static const int MAX_KEYS = 256;
+		static const int MAX_KEYS = 256;
 
-	int  mKeyMap[MAX_KEYS];
-	int  mFD;
+		int mKeyMap[MAX_KEYS];
+		int mFD;
 
-	std::string mPath;
-};
+		std::string mPath;
+	};
 
 #endif
-

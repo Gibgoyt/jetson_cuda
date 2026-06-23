@@ -19,7 +19,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
- 
+
 #ifndef __CSV_WRITER_H_
 #define __CSV_WRITER_H_
 
@@ -34,81 +34,75 @@
 #include <vector>
 #include <iostream>
 
+	/**
+	 * csvWriter
+	 * @ingroup csv
+	 */
+	class csvWriter {
+	public:
+		// constructor/destructor
+		csvWriter(const char* filename, const char* delimiter = ", ");
+		~csvWriter();
 
-/**
- * csvWriter
- * @ingroup csv
- */
-class csvWriter
-{
-public:
-	// constructor/destructor
-	csvWriter( const char* filename, const char* delimiter=", " );
-	~csvWriter();
+		// open
+		inline static csvWriter* Open(const char* filename, const char* delimiter = ", ");
 
-	// open
-	inline static csvWriter* Open( const char* filename, const char* delimiter=", " );
+		// close/flush
+		inline void Close();
+		inline void Flush();
 
-	// close/flush
-	inline void Close();
-	inline void Flush();
+		// is open or closed
+		inline bool IsOpen() const;
+		inline bool IsClosed() const;
 
-	// is open or closed
-	inline bool IsOpen() const;
-	inline bool IsClosed() const;
+		// end the current line
+		inline void EndLine();
 
-	// end the current line
-	inline void EndLine();
-	
-	// write value
-	template<typename T>
-	inline csvWriter& Write( const T& value );
+		// write value
+		template <typename T>
+		inline csvWriter& Write(const T& value);
 
-	// write values
-	template<typename T, typename... Args>
-	inline csvWriter& Write( const T& value, const Args&... args );
+		// write values
+		template <typename T, typename... Args>
+		inline csvWriter& Write(const T& value, const Args&... args);
 
-	// write values and end the line
-	template<typename T, typename... Args>
-	inline csvWriter& WriteLine( const T& value, const Args&... args );
+		// write values and end the line
+		template <typename T, typename... Args>
+		inline csvWriter& WriteLine(const T& value, const Args&... args);
 
-	// stream insertion
-	template<typename T>
-	inline csvWriter& operator << ( const T& value );
+		// stream insertion
+		template <typename T>
+		inline csvWriter& operator<<(const T& value);
 
-	// stream manipulators
-	inline csvWriter& operator << ( csvWriter& (*value)(csvWriter&) );
+		// stream manipulators
+		inline csvWriter& operator<<(csvWriter& (*value)(csvWriter&));
 
-	// set default delimiter
-	inline void SetDelimiter( const char* delimiters );
+		// set default delimiter
+		inline void SetDelimiter(const char* delimiters);
 
-	// retrieve default delimiter
-	inline const char* GetDelimiter() const;
+		// retrieve default delimiter
+		inline const char* GetDelimiter() const;
 
-	// retrieve the filename
-	inline const char* GetFilename() const;
+		// retrieve the filename
+		inline const char* GetFilename() const;
 
-private:
-	std::ofstream mFile;
-	std::string   mFilename;
-	std::string   mDelimiter;
-	bool		    mNewLine;
-};
+	private:
+		std::ofstream mFile;
+		std::string mFilename;
+		std::string mDelimiter;
+		bool mNewLine;
+	};
 
+	/**
+	 * csv stream manipulators
+	 * @ingroup csv
+	 */
+	namespace csv {
+	inline static csvWriter& endl(csvWriter& file);
+	inline static csvWriter& flush(csvWriter& file);
+	}  // namespace csv
 
-/**
- * csv stream manipulators
- * @ingroup csv
- */
-namespace csv
-{
-	inline static csvWriter& endl( csvWriter& file );
-	inline static csvWriter& flush( csvWriter& file );
-}
-
-
-// internal functions
+	// internal functions
 #include "csvWriter.hpp"
 
 #endif
-

@@ -25,19 +25,14 @@
 
 #include "cudaUtility.h"
 
+	// PointVertex
+	struct PointVertex {
+		float3 pos;
+		uchar4 color;
+	};
 
-// PointVertex
-struct PointVertex
-{
-	float3 pos;
-	uchar4 color;
-};
-
-
-// generate a grid of NxN points distributed over the world size,
-// with a random time factor animating the height of the points
-cudaError_t cudaGeneratePointGrid( PointVertex* points, uint32_t N, 
-							float world_size, float time );
-
+	// generate a grid of NxN points distributed over the world size,
+	// with a random time factor animating the height of the points
+	cudaError_t cudaGeneratePointGrid(PointVertex* points, uint32_t N, float world_size, float time);
 
 #endif

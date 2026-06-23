@@ -32,30 +32,22 @@
 
 #include "logging.h"
 
-
 // constructor
-InputDevices::InputDevices()
-{
+InputDevices::InputDevices() {
 	mKeyboard = NULL;
 	mJoystick = NULL;
 }
 
-
 // destructor
-InputDevices::~InputDevices()
-{
-
-}
-
+InputDevices::~InputDevices() {}
 
 // Create
-InputDevices* InputDevices::Create()
-{
+InputDevices* InputDevices::Create() {
 	InputDevices* mgr = new InputDevices();
 
 	mgr->mKeyboard = KeyboardDevice::Create();
 
-	if( !mgr->mKeyboard )
+	if (!mgr->mKeyboard)
 		return NULL;
 
 	mgr->mJoystick = JoystickDevice::Create();
@@ -63,56 +55,47 @@ InputDevices* InputDevices::Create()
 	return mgr;
 }
 
-
 // Poll
-bool InputDevices::Poll( uint32_t timeout )
-{
-	if( !mKeyboard && !mJoystick )
+bool InputDevices::Poll(uint32_t timeout) {
+	if (!mKeyboard && !mJoystick)
 		return false;
 
-	if( mKeyboard != NULL )
+	if (mKeyboard != NULL)
 		mKeyboard->Poll(timeout);
-	
-	if( mJoystick != NULL )
+
+	if (mJoystick != NULL)
 		mJoystick->Poll(timeout);
 
-	return true;	
+	return true;
 }
-
 
 // Path used to look for input devices
 #define DEV_PATH "/dev/input"
-//#define DEV_PATH "/dev/input/by-path"
-
+// #define DEV_PATH "/dev/input/by-path"
 
 // Filter for the AutoDevProbe scandir on /dev/input.
 // @param dir The current directory entry provided by scandir.
 // @return Non-zero if the given directory entry starts with "event", or zero otherwise.
-static int is_event_device(const struct dirent *dir) 
-{
+static int is_event_device(const struct dirent* dir) {
 	return strncmp("event", dir->d_name, 5) == 0;
-	//if( strcmp(dir->d_name, ".") == 0 || strcmp(dir->d_name, "..") == 0 )
+	// if( strcmp(dir->d_name, ".") == 0 || strcmp(dir->d_name, "..") == 0 )
 	//	return 0;
 
-	//return 1;
+	// return 1;
 }
 
-
 // Enumerate
-void InputDevices::Enumerate( DeviceList& devices )
-{
-	struct dirent **namelist;
+void InputDevices::Enumerate(DeviceList& devices) {
+	struct dirent** namelist;
 	int ndev = scandir(DEV_PATH, &namelist, is_event_device, versionsort);
 
-	if (ndev <= 0)
-	{	
+	if (ndev <= 0) {
 		return;
 	}
 
 	LogVerbose("Available devices (%i):\n", ndev);
 
-	for(int i = 0; i < ndev; i++)
-	{
+	for (int i = 0; i < ndev; i++) {
 		char fname[512];
 		char name[256] = "???";
 
@@ -122,7 +105,7 @@ void InputDevices::Enumerate( DeviceList& devices )
 		if (fd < 0)
 			continue;
 
-		if( ioctl(fd, EVIOCGNAME(sizeof(name)), name) < 0 )
+		if (ioctl(fd, EVIOCGNAME(sizeof(name)), name) < 0)
 			continue;
 
 		LogVerbose("%s:	'%s'\n", fname, name);
@@ -134,11 +117,9 @@ void InputDevices::Enumerate( DeviceList& devices )
 	}
 }
 
-
 // FindPathByName
-std::string InputDevices::FindPathByName( const char* name )
-{
-	if( !name )
+std::string InputDevices::FindPathByName(const char* name) {
+	if (!name)
 		return "";
 
 	DeviceList list;
@@ -146,17 +127,13 @@ std::string InputDevices::FindPathByName( const char* name )
 
 	const size_t numDevices = list.size();
 
-	if( numDevices == 0 )
+	if (numDevices == 0)
 		return "";
 
-	for( size_t n=0; n < numDevices; n++ )
-	{
-		if( strcasecmp(name, list[n].second.c_str()) == 0 )
+	for (size_t n = 0; n < numDevices; n++) {
+		if (strcasecmp(name, list[n].second.c_str()) == 0)
 			return list[n].first;
 	}
 
 	return "";
 }
-
-
-

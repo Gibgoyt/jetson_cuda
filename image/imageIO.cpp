@@ -19,7 +19,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
- 
+
 #include "imageIO.h"
 
 #include "cudaMappedMemory.h"
@@ -39,29 +39,27 @@
 
 #include <memory>
 
-
 namespace {
-    struct Deleter {
-        void operator()(unsigned char* data) const noexcept(noexcept(stbi_image_free)) { stbi_image_free(data); }
-    };
-    using StbBuffer = std::unique_ptr<unsigned char[], Deleter>;
-}
+struct Deleter {
+	void operator()(unsigned char* data) const noexcept(noexcept(stbi_image_free)) {
+		stbi_image_free(data);
+	}
+};
+using StbBuffer = std::unique_ptr<unsigned char[], Deleter>;
+}  // namespace
 
 // loadImageIO (internal)
-static StbBuffer loadImageIO( const char* filename, int* width, int* height, int* channels )
-{
+static StbBuffer loadImageIO(const char* filename, int* width, int* height, int* channels) {
 	// validate parameters
-	if( !filename || !width || !height || !channels )
-	{
+	if (!filename || !width || !height || !channels) {
 		LogError(LOG_IMAGE "loadImageIO() - invalid parameter(s)\n");
 		return NULL;
 	}
-	
+
 	// verify file path
 	const std::string path = locateFile(filename);
 
-	if( path.length() == 0 )
-	{
+	if (path.length() == 0) {
 		LogError(LOG_IMAGE "failed to find file '%s'\n", filename);
 		return NULL;
 	}
@@ -73,57 +71,79 @@ static StbBuffer loadImageIO( const char* filename, int* width, int* height, int
 
 	auto img = StbBuffer(stbi_load(path.c_str(), &imgWidth, &imgHeight, &imgChannels, *channels));
 
-	if( !img )
-	{
+	if (!img) {
 		LogError(LOG_IMAGE "failed to load '%s'\n", path.c_str());
 		LogError(LOG_IMAGE "(error:  %s)\n", stbi_failure_reason());
 		return NULL;
 	}
 
-	if( *channels != 0 )
+	if (*channels != 0)
 		imgChannels = *channels;
 
 	// validate dimensions for sanity
-	LogVerbose(LOG_IMAGE "loaded '%s'  (%ix%i, %i channels)\n", filename, imgWidth, imgHeight, imgChannels);
+	LogVerbose(
+	    LOG_IMAGE "loaded '%s'  (%ix%i, %i channels)\n",
+	    filename,
+	    imgWidth,
+	    imgHeight,
+	    imgChannels
+	);
 
-	if( imgWidth < 0 || imgHeight < 0 || imgChannels < 0 || imgChannels > 4 )
-	{
+	if (imgWidth < 0 || imgHeight < 0 || imgChannels < 0 || imgChannels > 4) {
 		LogError(LOG_IMAGE "'%s' has invalid dimensions\n", filename);
 		return NULL;
 	}
 
 	// if the user provided a desired size, resize the image if necessary
-	const int resizeWidth  = *width;
+	const int resizeWidth = *width;
 	const int resizeHeight = *height;
 
-	if( resizeWidth > 0 && resizeHeight > 0 && resizeWidth != imgWidth && resizeHeight != imgHeight )
-	{
+	if (resizeWidth > 0 && resizeHeight > 0 && resizeWidth != imgWidth &&
+	    resizeHeight != imgHeight) {
 		const auto img_org = std::move(img);
 
 		LogVerbose(LOG_IMAGE "resizing '%s' to %ix%i\n", filename, resizeWidth, resizeHeight);
 
 		// allocate memory for the resized image
-		img.reset(new unsigned char[resizeWidth * resizeHeight * imgChannels * sizeof(unsigned char)]);
+		img.reset(
+		    new unsigned char[resizeWidth * resizeHeight * imgChannels * sizeof(unsigned char)]
+		);
 
-		if( !img )
-		{
-			LogError(LOG_IMAGE "failed to allocated memory to resize '%s' to %ix%i\n", filename, resizeWidth, resizeHeight);
+		if (!img) {
+			LogError(
+			    LOG_IMAGE "failed to allocated memory to resize '%s' to %ix%i\n",
+			    filename,
+			    resizeWidth,
+			    resizeHeight
+			);
 			return NULL;
 		}
 
 		// resize the original image
-		if( !stbir_resize_uint8(img_org.get(), imgWidth, imgHeight, 0,
-						    img.get(), resizeWidth, resizeHeight, 0, imgChannels) )
-		{
-			LogError(LOG_IMAGE "failed to resize '%s' to %ix%i\n", filename, resizeWidth, resizeHeight);
+		if (!stbir_resize_uint8(
+		        img_org.get(),
+		        imgWidth,
+		        imgHeight,
+		        0,
+		        img.get(),
+		        resizeWidth,
+		        resizeHeight,
+		        0,
+		        imgChannels
+		    )) {
+			LogError(
+			    LOG_IMAGE "failed to resize '%s' to %ix%i\n",
+			    filename,
+			    resizeWidth,
+			    resizeHeight
+			);
 			return NULL;
 		}
 
 		// update resized dimensions
-		imgWidth  = resizeWidth;
+		imgWidth = resizeWidth;
 		imgHeight = resizeHeight;
-
-	}	
+	}
 
 	*width = imgWidth;
 	*height = imgHeight;
@@ -132,25 +152,31 @@ static StbBuffer loadImageIO( const char* filename, int* width, int* height, int
 	return img;
 }
 
-
 // loadImage
-bool loadImage( const char* filename, void** output, int* width, int* height, imageFormat format, cudaStream_t stream )
-{
+bool loadImage(
+    const char* filename,
+    void** output,
+    int* width,
+    int* height,
+    imageFormat format,
+    cudaStream_t stream
+) {
 	// validate parameters
-	if( !filename || !output || !width || !height )
-	{
+	if (!filename || !output || !width || !height) {
 		LogError(LOG_IMAGE "loadImage() - invalid parameter(s)\n");
 		return NULL;
 	}
 
 	// check that the requested format is supported
-	if( !imageFormatIsRGB(format) )
-	{
-		LogError(LOG_IMAGE "loadImage() -- unsupported output image format requested (%s)\n", imageFormatToStr(format));
+	if (!imageFormatIsRGB(format)) {
+		LogError(
+		    LOG_IMAGE "loadImage() -- unsupported output image format requested (%s)\n",
+		    imageFormatToStr(format)
+		);
 		LogError(LOG_IMAGE "               supported output formats are:\n");
-		LogError(LOG_IMAGE "                   * rgb8\n");		
-		LogError(LOG_IMAGE "                   * rgba8\n");		
-		LogError(LOG_IMAGE "                   * rgb32\n");		
+		LogError(LOG_IMAGE "                   * rgb8\n");
+		LogError(LOG_IMAGE "                   * rgba8\n");
+		LogError(LOG_IMAGE "                   * rgb32\n");
 		LogError(LOG_IMAGE "                   * rgba32\n");
 
 		return NULL;
@@ -162,175 +188,215 @@ bool loadImage( const char* filename, void** output, int* width, int* height, im
 	int imgChannels = imageFormatChannels(format);
 
 	auto img = loadImageIO(filename, &imgWidth, &imgHeight, &imgChannels);
-	
-	if( !img )
-		return false;	
+
+	if (!img)
+		return false;
 
 	// allocate CUDA buffer for the image
 	const size_t imgSize = imageFormatSize(format, imgWidth, imgHeight);
 
-	if( !cudaAllocMapped((void**)output, imgSize) )
-	{
-		LogError(LOG_IMAGE "loadImage() -- failed to allocate %zu bytes for image '%s'\n", imgSize, filename);
+	if (!cudaAllocMapped((void**)output, imgSize)) {
+		LogError(
+		    LOG_IMAGE "loadImage() -- failed to allocate %zu bytes for image '%s'\n",
+		    imgSize,
+		    filename
+		);
 		return false;
 	}
 
 	// convert from uint8 to float
-	if( format == IMAGE_RGB32F || format == IMAGE_RGBA32F )
-	{
+	if (format == IMAGE_RGB32F || format == IMAGE_RGBA32F) {
 		const imageFormat inputFormat = (imgChannels == 3) ? IMAGE_RGB8 : IMAGE_RGBA8;
 		const size_t inputImageSize = imageFormatSize(inputFormat, imgWidth, imgHeight);
 
 		void* inputImgGPU = NULL;
 
-		if( !cudaAllocMapped(&inputImgGPU, inputImageSize) )
-		{
-			LogError(LOG_IMAGE "loadImage() -- failed to allocate %zu bytes for image '%s'\n", inputImageSize, filename);
+		if (!cudaAllocMapped(&inputImgGPU, inputImageSize)) {
+			LogError(
+			    LOG_IMAGE "loadImage() -- failed to allocate %zu bytes for image '%s'\n",
+			    inputImageSize,
+			    filename
+			);
 			return false;
 		}
 
 		memcpy(inputImgGPU, img.get(), imageFormatSize(inputFormat, imgWidth, imgHeight));
 
-		if( CUDA_FAILED(cudaConvertColor(inputImgGPU, inputFormat, *output, format, imgWidth, imgHeight, stream)) )
-		{
-			printf(LOG_IMAGE "loadImage() -- failed to convert image from %s to %s ('%s')\n", imageFormatToStr(inputFormat), imageFormatToStr(format), filename);
+		if (CUDA_FAILED(cudaConvertColor(
+		        inputImgGPU,
+		        inputFormat,
+		        *output,
+		        format,
+		        imgWidth,
+		        imgHeight,
+		        stream
+		    ))) {
+			printf(
+			    LOG_IMAGE "loadImage() -- failed to convert image from %s to %s ('%s')\n",
+			    imageFormatToStr(inputFormat),
+			    imageFormatToStr(format),
+			    filename
+			);
 			return false;
 		}
 
 		CUDA(cudaFreeHost(inputImgGPU));
-	}
-	else
-	{
+	} else {
 		// uint8 output can be straight copied to GPU memory
 		memcpy(*output, img.get(), imgSize);
 	}
 
-	*width  = imgWidth;
+	*width = imgWidth;
 	*height = imgHeight;
-	
+
 	return true;
 }
 
-
 // loadImageRGBA
-bool loadImageRGBA( const char* filename, float4** output, int* width, int* height, cudaStream_t stream )
-{
+bool loadImageRGBA(
+    const char* filename,
+    float4** output,
+    int* width,
+    int* height,
+    cudaStream_t stream
+) {
 	return loadImage(filename, (void**)output, width, height, IMAGE_RGBA32F, stream);
 }
 
 // loadImageRGBA
-bool loadImageRGBA( const char* filename, float4** cpu, float4** gpu, int* width, int* height, cudaStream_t stream )
-{
+bool loadImageRGBA(
+    const char* filename,
+    float4** cpu,
+    float4** gpu,
+    int* width,
+    int* height,
+    cudaStream_t stream
+) {
 	const bool result = loadImageRGBA(filename, gpu, width, height, stream);
 
-	if( !result )
+	if (!result)
 		return false;
 
-	if( cpu != NULL )
+	if (cpu != NULL)
 		*cpu = *gpu;
 
 	return true;
 }
 
-
 // limit_pixel
 /*static inline unsigned char limit_pixel( float pixel, float max_pixel )
 {
-	if( pixel < 0 )
-		pixel = 0;
+    if( pixel < 0 )
+        pixel = 0;
 
-	if( pixel > max_pixel )
-		pixel = max_pixel;
+    if( pixel > max_pixel )
+        pixel = max_pixel;
 
-	return (unsigned char)pixel;
+    return (unsigned char)pixel;
 }*/
 
-
 // saveImage
-bool saveImage( const char* filename, void* ptr, int width, int height, imageFormat format, int quality, const float2& pixel_range, bool sync, cudaStream_t stream )
-{
+bool saveImage(
+    const char* filename,
+    void* ptr,
+    int width,
+    int height,
+    imageFormat format,
+    int quality,
+    const float2& pixel_range,
+    bool sync,
+    cudaStream_t stream
+) {
 	// validate parameters
-	if( !filename || !ptr || width <= 0 || height <= 0 )
-	{
+	if (!filename || !ptr || width <= 0 || height <= 0) {
 		LogError(LOG_IMAGE "saveImageRGBA() - invalid parameter\n");
 		return false;
 	}
-	
-	if( quality < 1 )
+
+	if (quality < 1)
 		quality = 1;
 
-	if( quality > 100 )
+	if (quality > 100)
 		quality = 100;
-	
+
 	// check that the requested format is supported
-	if( !imageFormatIsRGB(format) && !imageFormatIsGray(format) )
-	{
-		LogError(LOG_IMAGE "saveImage() -- unsupported input image format (%s)\n", imageFormatToStr(format));
+	if (!imageFormatIsRGB(format) && !imageFormatIsGray(format)) {
+		LogError(
+		    LOG_IMAGE "saveImage() -- unsupported input image format (%s)\n",
+		    imageFormatToStr(format)
+		);
 		LogError(LOG_IMAGE "               supported input image formats are:\n");
-		LogError(LOG_IMAGE "                   * rgb8\n");		
-		LogError(LOG_IMAGE "                   * rgba8\n");		
-		LogError(LOG_IMAGE "                   * rgb32f\n");		
+		LogError(LOG_IMAGE "                   * rgb8\n");
+		LogError(LOG_IMAGE "                   * rgba8\n");
+		LogError(LOG_IMAGE "                   * rgb32f\n");
 		LogError(LOG_IMAGE "                   * rgba32f\n");
 		LogError(LOG_IMAGE "                   * gray8\n");
 		LogError(LOG_IMAGE "                   * gray32\n");
 
 		return false;
 	}
-	
+
 	// allocate memory for the uint8 image
 	const size_t channels = imageFormatChannels(format);
-	const size_t stride   = width * sizeof(unsigned char) * channels;
-	const size_t size     = stride * height;
-	unsigned char* img    = (unsigned char*)ptr;
+	const size_t stride = width * sizeof(unsigned char) * channels;
+	const size_t size = stride * height;
+	unsigned char* img = (unsigned char*)ptr;
 
 	// if needed, convert from float to uint8
 	const imageBaseType baseType = imageFormatBaseType(format);
 
-	if( baseType == IMAGE_FLOAT )
-	{
+	if (baseType == IMAGE_FLOAT) {
 		imageFormat outputFormat = IMAGE_UNKNOWN;
 
-		if( channels == 1 )
+		if (channels == 1)
 			outputFormat = IMAGE_GRAY8;
-		else if( channels == 3 )
+		else if (channels == 3)
 			outputFormat = IMAGE_RGB8;
-		else if( channels == 4 )
+		else if (channels == 4)
 			outputFormat = IMAGE_RGBA8;
 
-		if( !cudaAllocMapped((void**)&img, size) )
-		{
-			LogError(LOG_IMAGE "saveImage() -- failed to allocate %zu bytes for image '%s'\n", size, filename);
+		if (!cudaAllocMapped((void**)&img, size)) {
+			LogError(
+			    LOG_IMAGE "saveImage() -- failed to allocate %zu bytes for image '%s'\n",
+			    size,
+			    filename
+			);
 			return false;
 		}
 
-		if( CUDA_FAILED(cudaConvertColor(ptr, format, img, outputFormat, width, height, pixel_range, stream)) )  // TODO limit pixel
+		if (CUDA_FAILED(
+		        cudaConvertColor(ptr, format, img, outputFormat, width, height, pixel_range, stream)
+		    ))  // TODO limit pixel
 		{
-			LogError(LOG_IMAGE "saveImage() -- failed to convert image from %s to %s ('%s')\n", imageFormatToStr(format), imageFormatToStr(outputFormat), filename);
+			LogError(
+			    LOG_IMAGE "saveImage() -- failed to convert image from %s to %s ('%s')\n",
+			    imageFormatToStr(format),
+			    imageFormatToStr(outputFormat),
+			    filename
+			);
 			return false;
 		}
-		
+
 		sync = true;
 	}
-	
-	if( sync )
-	{
-        if( stream != 0 )
-            CUDA(cudaStreamSynchronize(stream));
-        else
-            CUDA(cudaDeviceSynchronize());
+
+	if (sync) {
+		if (stream != 0)
+			CUDA(cudaStreamSynchronize(stream));
+		else
+			CUDA(cudaDeviceSynchronize());
 	}
-	
-	#define release_return(x) 	\
-		if( baseType == IMAGE_FLOAT ) \
-			CUDA(cudaFreeHost(img)); \
-		return x;
-	
+
+#define release_return(x)                                                                          \
+	if (baseType == IMAGE_FLOAT)                                                                   \
+		CUDA(cudaFreeHost(img));                                                                   \
+	return x;
+
 	// determine the file extension
 	const std::string ext = fileExtension(filename);
 	const char* extension = ext.c_str();
 
-	if( ext.size() == 0 )
-	{
+	if (ext.size() == 0) {
 		LogError(LOG_IMAGE "invalid filename or extension, '%s'\n", filename);
 		release_return(false);
 	}
@@ -338,49 +404,44 @@ bool saveImage( const char* filename, void* ptr, int width, int height, imageFor
 	// save the image
 	int save_result = 0;
 
-	if( strcasecmp(extension, "jpg") == 0 || strcasecmp(extension, "jpeg") == 0 )
-	{
+	if (strcasecmp(extension, "jpg") == 0 || strcasecmp(extension, "jpeg") == 0) {
 		save_result = stbi_write_jpg(filename, width, height, channels, img, quality);
-	}
-	else if( strcasecmp(extension, "png") == 0 )
-	{
+	} else if (strcasecmp(extension, "png") == 0) {
 		// convert quality from 1-100 to 0-9 (where 0 is high quality)
 		quality = (100 - quality) / 10;
 
-		if( quality < 0 )
+		if (quality < 0)
 			quality = 0;
-		
-		if( quality > 9 )
+
+		if (quality > 9)
 			quality = 9;
 
 		stbi_write_png_compression_level = quality;
 
 		// write the PNG file
 		save_result = stbi_write_png(filename, width, height, channels, img, stride);
-	}
-	else if( strcasecmp(extension, "tga") == 0 )
-	{
+	} else if (strcasecmp(extension, "tga") == 0) {
 		save_result = stbi_write_tga(filename, width, height, channels, img);
-	}
-	else if( strcasecmp(extension, "bmp") == 0 )
-	{
+	} else if (strcasecmp(extension, "bmp") == 0) {
 		save_result = stbi_write_bmp(filename, width, height, channels, img);
 	}
 	/*else if( strcasecmp(extension, "hdr") == 0 )
 	{
-		save_result = stbi_write_hdr(filename, width, height, channels, (float*)cpu);
+	    save_result = stbi_write_hdr(filename, width, height, channels, (float*)cpu);
 	}*/
-	else
-	{
-		LogError(LOG_IMAGE "invalid extension format '.%s' saving image '%s'\n", extension, filename);
+	else {
+		LogError(
+		    LOG_IMAGE "invalid extension format '.%s' saving image '%s'\n",
+		    extension,
+		    filename
+		);
 		LogError(LOG_IMAGE "valid extensions are:  JPG/JPEG, PNG, TGA, BMP.\n");
-		
+
 		release_return(false);
 	}
 
 	// check the return code
-	if( !save_result )
-	{
+	if (!save_result) {
 		LogError(LOG_IMAGE "failed to save %ix%i image to '%s'\n", width, height, filename);
 		release_return(false);
 	}
@@ -390,16 +451,47 @@ bool saveImage( const char* filename, void* ptr, int width, int height, imageFor
 	release_return(true);
 }
 
-
 // saveImage
-bool saveImage( const char* filename, void* ptr, int width, int height, imageFormat format, int quality, cudaStream_t stream )      
-{ 
-    return saveImage(filename, ptr, width, height, format, quality, make_float2(0,255), true, stream);
+bool saveImage(
+    const char* filename,
+    void* ptr,
+    int width,
+    int height,
+    imageFormat format,
+    int quality,
+    cudaStream_t stream
+) {
+	return saveImage(
+	    filename,
+	    ptr,
+	    width,
+	    height,
+	    format,
+	    quality,
+	    make_float2(0, 255),
+	    true,
+	    stream
+	);
 }
 
-
 // saveImageRGBA
-bool saveImageRGBA( const char* filename, float4* ptr, int width, int height, float max_pixel, int quality, cudaStream_t stream )
-{
-	return saveImage(filename, ptr, width, height, IMAGE_RGBA32F, quality, make_float2(0, max_pixel), stream);
+bool saveImageRGBA(
+    const char* filename,
+    float4* ptr,
+    int width,
+    int height,
+    float max_pixel,
+    int quality,
+    cudaStream_t stream
+) {
+	return saveImage(
+	    filename,
+	    ptr,
+	    width,
+	    height,
+	    IMAGE_RGBA32F,
+	    quality,
+	    make_float2(0, max_pixel),
+	    stream
+	);
 }

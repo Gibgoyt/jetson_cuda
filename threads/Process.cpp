@@ -19,7 +19,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
- 
+
 #include "Process.h"
 
 #include "filesystem.h"
@@ -28,107 +28,85 @@
 #include <string.h>
 #include <limits.h>
 
-
 // readLink
-static std::string readLink( const std::string& path )
-{
+static std::string readLink(const std::string& path) {
 	char buf[PATH_MAX];
-	memset(buf, 0, sizeof(buf));	// readlink() does not NULL-terminate
+	memset(buf, 0, sizeof(buf));  // readlink() does not NULL-terminate
 
 	const ssize_t size = readlink(path.c_str(), buf, sizeof(buf));
 
-	if( size <= 0 )
-	{
+	if (size <= 0) {
 		LogError("failed to read link %s\n", path.c_str());
 		return "";
 	}
-	
+
 	return std::string(buf);
 }
 
-
 // GetID
-pid_t Process::GetID()
-{
+pid_t Process::GetID() {
 	return getpid();
 }
-	
 
 // GetParentID
-pid_t Process::GetParentID()
-{
+pid_t Process::GetParentID() {
 	return getppid();
 }
 
-
 // GetCommandLine
-std::string Process::GetCommandLine( pid_t pid )
-{
+std::string Process::GetCommandLine(pid_t pid) {
 	const std::string path = "/proc/" + (pid < 0 ? "self" : std::to_string(pid)) + "/cmdline";
 	char buf[PATH_MAX];
-	
+
 	FILE* file = fopen(path.c_str(), "rb");
-	
-	if( !file )
-	{
+
+	if (!file) {
 		LogError("failed to open %s\n", path.c_str());
 		return "";
 	}
-	
+
 	const size_t bytes_read = fread(buf, 1, sizeof(buf), file);
 	fclose(file);
-	
-	for( size_t n=0; n < bytes_read; n++ )
-	{
-		if( buf[n] == 0 )
-			buf[n] = ' ';	// /proc/PID/cmdline strings are NULL-separated
+
+	for (size_t n = 0; n < bytes_read; n++) {
+		if (buf[n] == 0)
+			buf[n] = ' ';  // /proc/PID/cmdline strings are NULL-separated
 	}
 
 	return std::string(buf);
 }
 
-
 // GetExecutablePath
-std::string Process::GetExecutablePath( pid_t pid )
-{
+std::string Process::GetExecutablePath(pid_t pid) {
 	return readLink("/proc/" + (pid < 0 ? "self" : std::to_string(pid)) + "/exe");
 }
 
-
 // GetExecutableDir
-std::string Process::GetExecutableDir( pid_t pid )
-{
+std::string Process::GetExecutableDir(pid_t pid) {
 	const std::string path = GetExecutablePath(pid);
 
-	if( path.length() == 0 )
+	if (path.length() == 0)
 		return "";
 
 	return pathDir(path);
 }
 
-
 // GetWorkingDirectory
-std::string Process::GetWorkingDir( pid_t pid )
-{
-	if( pid < 0 )
-	{
+std::string Process::GetWorkingDir(pid_t pid) {
+	if (pid < 0) {
 		char buf[PATH_MAX];
 		char* str = getcwd(buf, sizeof(buf));
 
-		if( !str )
+		if (!str)
 			return "";
 
 		return std::string(buf);
-	}
-	else
-	{
+	} else {
 		return readLink("/proc/" + std::to_string(pid) + "/cwd");
 	}
 }
 
-
 // Fork
-void Process::Fork()
-{
+void Process::Fork() {
 	fork();
 }

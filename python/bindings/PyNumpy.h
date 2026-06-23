@@ -19,18 +19,16 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
- 
+
 #ifndef __PYTHON_BINDINGS_NUMPY__
 #define __PYTHON_BINDINGS_NUMPY__
 
 #include "PyUtils.h"
 
+	// Register functions
+	PyMethodDef* PyNumpy_RegisterFunctions();
 
-// Register functions
-PyMethodDef* PyNumpy_RegisterFunctions();
-
-// Register types
-bool PyNumpy_RegisterTypes( PyObject* module );
-
+	// Register types
+	bool PyNumpy_RegisterTypes(PyObject* module);
 
 #endif

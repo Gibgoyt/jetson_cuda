@@ -25,59 +25,58 @@
 
 #include <pthread.h>
 
-
-/**
- * A lightweight mutual exclusion lock.  It is very fast to check if the mutex is available,
- * lock it, and release it.  However, if the mutex is unavailable when you attempt to
- * lock it, execution of the thread will stop until it becomes available.
- * @ingroup threads
- */
-class Mutex
-{
-public:
 	/**
-	 * Constructor
+	 * A lightweight mutual exclusion lock.  It is very fast to check if the mutex is available,
+	 * lock it, and release it.  However, if the mutex is unavailable when you attempt to
+	 * lock it, execution of the thread will stop until it becomes available.
+	 * @ingroup threads
 	 */
-	inline Mutex();
+	class Mutex {
+	public:
+		/**
+		 * Constructor
+		 */
+		inline Mutex();
 
-	/**
-	 * Destructor
-	 */
-	inline ~Mutex();
+		/**
+		 * Destructor
+		 */
+		inline ~Mutex();
 
-	/**
-	 * If the lock is free, aquire it.  Otherwise, return without waiting for it to become available.
-	 * @result True if the lock was aquired, false if not.
-	 */
-	inline bool AttemptLock();
-	
-	/**
-	 * Aquire the lock, whenever it becomes available.  This could mean just a few instructions
-	 * if the lock is already free, or to block the thread if it isn't.
-	 */
-	inline void Lock();
+		/**
+		 * If the lock is free, aquire it.  Otherwise, return without waiting for it to become
+		 * available.
+		 * @result True if the lock was aquired, false if not.
+		 */
+		inline bool AttemptLock();
 
-	/**
-	 * Release the lock
-	 */
-	inline void Unlock();	
+		/**
+		 * Aquire the lock, whenever it becomes available.  This could mean just a few instructions
+		 * if the lock is already free, or to block the thread if it isn't.
+		 */
+		inline void Lock();
 
-	/**
-	 * Wait for the lock, then release it immediately.  Use this in situations where you are waiting for
-	 * an event to occur.
-	 */
-	inline void Sync();
+		/**
+		 * Release the lock
+		 */
+		inline void Unlock();
 
-	/**
-	 * Get the mutex object
-	 */
-	inline pthread_mutex_t* GetID();
+		/**
+		 * Wait for the lock, then release it immediately.  Use this in situations where you are waiting
+		 * for an event to occur.
+		 */
+		inline void Sync();
 
-protected:
-	pthread_mutex_t mID;
-};
+		/**
+		 * Get the mutex object
+		 */
+		inline pthread_mutex_t* GetID();
 
-// inline implementations
+	protected:
+		pthread_mutex_t mID;
+	};
+
+	// inline implementations
 #include "Mutex.inl"
 
 #endif

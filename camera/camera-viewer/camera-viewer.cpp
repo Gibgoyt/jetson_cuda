@@ -26,99 +26,98 @@
 
 #include <signal.h>
 
-
 bool signal_recieved = false;
 
-void sig_handler(int signo)
-{
-	if( signo == SIGINT )
-	{
+void sig_handler(int signo) {
+	if (signo == SIGINT) {
 		printf("received SIGINT\n");
 		signal_recieved = true;
 	}
 }
 
-
-int main( int argc, char** argv )
-{
+int main(int argc, char** argv) {
 	commandLine cmdLine(argc, argv);
-	
+
 	/*
 	 * attach signal handler
-	 */	
-	if( signal(SIGINT, sig_handler) == SIG_ERR )
+	 */
+	if (signal(SIGINT, sig_handler) == SIG_ERR)
 		printf("\ncan't catch SIGINT\n");
 
 	/*
 	 * create the camera device
 	 */
-	gstCamera* camera = gstCamera::Create(cmdLine.GetInt("width", gstCamera::DefaultWidth),
-								   cmdLine.GetInt("height", gstCamera::DefaultHeight),
-								   cmdLine.GetString("camera"));
+	gstCamera* camera = gstCamera::Create(
+	    cmdLine.GetInt("width", gstCamera::DefaultWidth),
+	    cmdLine.GetInt("height", gstCamera::DefaultHeight),
+	    cmdLine.GetString("camera")
+	);
 
-	if( !camera )
-	{
+	if (!camera) {
 		printf("\ncamera-viewer:  failed to initialize camera device\n");
 		return 0;
 	}
-	
-	printf("\ncamera-viewer:  successfully initialized camera device (%ux%u)\n", camera->GetWidth(), camera->GetHeight());
-	
-	
+
+	printf(
+	    "\ncamera-viewer:  successfully initialized camera device (%ux%u)\n",
+	    camera->GetWidth(),
+	    camera->GetHeight()
+	);
+
 	/*
 	 * create openGL window
 	 */
 	glDisplay* display = glDisplay::Create();
-	
-	if( !display )
+
+	if (!display)
 		printf("camera-viewer:  failed to create openGL display\n");
-	
 
 	/*
 	 * start streaming
 	 */
-	if( !camera->Open() )
-	{
+	if (!camera->Open()) {
 		printf("camera-viewer:  failed to open camera for streaming\n");
 		return 0;
 	}
-	
+
 	printf("camera-viewer:  camera open for streaming\n");
-	
-	
+
 	/*
 	 * processing loop
 	 */
-	while( !signal_recieved )
-	{
+	while (!signal_recieved) {
 		// capture latest image
 		float* imgRGBA = NULL;
-		
-		if( !camera->CaptureRGBA(&imgRGBA, 1000) )
+
+		if (!camera->CaptureRGBA(&imgRGBA, 1000))
 			printf("camera-viewer:  failed to capture RGBA image\n");
 
 		// update display
-		if( display != NULL )
-		{
+		if (display != NULL) {
 			display->RenderOnce((float*)imgRGBA, camera->GetWidth(), camera->GetHeight());
 
 			// update status bar
 			char str[256];
-			sprintf(str, "Camera Viewer (%ux%u) | %.0f FPS", camera->GetWidth(), camera->GetHeight(), display->GetFPS());
-			display->SetTitle(str);	
+			sprintf(
+			    str,
+			    "Camera Viewer (%ux%u) | %.0f FPS",
+			    camera->GetWidth(),
+			    camera->GetHeight(),
+			    display->GetFPS()
+			);
+			display->SetTitle(str);
 
 			// check if the user quit
-			if( display->IsClosed() )
+			if (display->IsClosed())
 				signal_recieved = true;
 		}
 	}
-	
 
 	/*
 	 * destroy resources
 	 */
 	printf("\ncamera-viewer:  shutting down...\n");
-	
+
 	SAFE_DELETE(camera);
 	SAFE_DELETE(display);
 

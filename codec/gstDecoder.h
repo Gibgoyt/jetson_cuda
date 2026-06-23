@@ -28,140 +28,146 @@
 
 #include "videoSource.h"
 
-
-// Forward declarations
-class WebRTCServer;
-struct WebRTCPeer;
-struct _GstAppSink;
-
-
-/**
- * Hardware-accelerated video decoder for Jetson using GStreamer.
- *
- * gstDecoder supports loading video files from disk (MKV, MP4, AVI, FLV)
- * and RTP/RTSP network streams over UDP/IP. The supported decoder codecs
- * are H.264, H.265, VP8, VP9, MPEG-2, MPEG-4, and MJPEG.
- *
- * @note gstDecoder implements the videoSource interface and is intended to
- * be used through that as opposed to directly.  videoSource implements
- * additional command-line parsing of videoOptions to construct instances.
- *
- * @see videoSource
- * @ingroup codec
- */
-class gstDecoder : public videoSource
-{
-public:
-	/**
-	 * Create a decoder from the provided video options.
-	 */
-	static gstDecoder* Create( const videoOptions& options );
+	// Forward declarations
+	class WebRTCServer;
+	struct WebRTCPeer;
+	struct _GstAppSink;
 
 	/**
-	 * Create a decoder instance from resource URI and codec.
-	 */
-	static gstDecoder* Create( const URI& resource, videoOptions::Codec codec );
-	
-	/**
-	 * Destructor
-	 */
-	~gstDecoder();
-
-	/**
-	 * Capture the next decoded frame.
-	 * @see videoSource::Capture()
-	 */
-	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=DEFAULT_TIMEOUT, int* status=NULL, cudaStream_t stream=0 );
-
-	/**
-	 * Open the stream.
-	 * @see videoSource::Open()
-	 */
-	virtual bool Open();
-
-	/**
-	 * Close the stream.
-	 * @see videoSource::Close()
-	 */
-	virtual void Close();
-
-	/**
-	 * Return true if End Of Stream (EOS) has been reached.
-	 * In the context of gstDecoder, EOS means that playback 
-	 * has reached the end of the file, and looping is either
-	 * disabled or all loops have already been run.  In the case
-	 * of RTP/RTSP, it means that the stream has terminated.
-	 */
-	inline bool IsEOS() const				{ return mEOS; }
-
-	/**
-	 * Return the interface type (gstDecoder::Type)
-	 */
-	virtual inline uint32_t GetType() const		{ return Type; }
-
-	/**
-	 * Unique type identifier of gstDecoder class.
-	 */
-	static const uint32_t Type = (1 << 1);
-
-	/**
-	 * String array of supported video file extensions, terminated
-	 * with a NULL sentinel value.  The supported extension are:
+	 * Hardware-accelerated video decoder for Jetson using GStreamer.
 	 *
-	 *    - MKV
-	 *    - MP4 / QT
-	 *    - AVI
-	 *    - FLV
+	 * gstDecoder supports loading video files from disk (MKV, MP4, AVI, FLV)
+	 * and RTP/RTSP network streams over UDP/IP. The supported decoder codecs
+	 * are H.264, H.265, VP8, VP9, MPEG-2, MPEG-4, and MJPEG.
 	 *
-	 * @see IsSupportedExtension() to check a string against this list.
+	 * @note gstDecoder implements the videoSource interface and is intended to
+	 * be used through that as opposed to directly.  videoSource implements
+	 * additional command-line parsing of videoOptions to construct instances.
+	 *
+	 * @see videoSource
+	 * @ingroup codec
 	 */
-	static const char* SupportedExtensions[];
+	class gstDecoder : public videoSource {
+	public:
+		/**
+		 * Create a decoder from the provided video options.
+		 */
+		static gstDecoder* Create(const videoOptions& options);
 
-	/**
-	 * Return true if the extension is in the list of SupportedExtensions.
-	 * @param ext string containing the extension to be checked (should not contain leading dot)
-	 * @see SupportedExtensions for the list of supported video file extensions.
-	 */
-	static bool IsSupportedExtension( const char* ext );
+		/**
+		 * Create a decoder instance from resource URI and codec.
+		 */
+		static gstDecoder* Create(const URI& resource, videoOptions::Codec codec);
 
-protected:
-	gstDecoder( const videoOptions& options );
-	
-	void checkMsgBus();
-	void checkBuffer();
-	bool buildLaunchStr();
-	bool discover();
-	
-	bool init();
-	bool initPipeline();
-	void destroyPipeline();
-	
-	inline bool isLooping() const { return (mOptions.loop < 0) || ((mOptions.loop > 0) && (mLoopCount < mOptions.loop)); }
+		/**
+		 * Destructor
+		 */
+		~gstDecoder();
 
-	// appsink callbacks
-	static void onEOS(_GstAppSink* sink, void* user_data);
-	
-	static GstFlowReturn onPreroll(_GstAppSink* sink, void* user_data);
-	static GstFlowReturn onBuffer(_GstAppSink* sink, void* user_data);
+		/**
+		 * Capture the next decoded frame.
+		 * @see videoSource::Capture()
+		 */
+		virtual bool Capture(
+		    void** image,
+		    imageFormat format,
+		    uint64_t timeout = DEFAULT_TIMEOUT,
+		    int* status = NULL,
+		    cudaStream_t stream = 0
+		);
 
-	// WebRTC callbacks
-	static void onWebsocketMessage( WebRTCPeer* peer, const char* message, size_t message_size, void* user_data );
+		/**
+		 * Open the stream.
+		 * @see videoSource::Open()
+		 */
+		virtual bool Open();
 
-	GstBus*      mBus;
-	GstElement*  mPipeline;
-	_GstAppSink* mAppSink;
-	
-	Event	  mWaitEvent;
-	std::string mLaunchStr;
-	bool        mCustomSize;
-	bool		  mCustomRate;
-	bool        mEOS;
-	size_t	  mLoopCount;
-		
-	gstBufferManager* mBufferManager;
-	
-	WebRTCServer* mWebRTCServer;
-	bool mWebRTCConnected;
-};
-  
+		/**
+		 * Close the stream.
+		 * @see videoSource::Close()
+		 */
+		virtual void Close();
+
+		/**
+		 * Return true if End Of Stream (EOS) has been reached.
+		 * In the context of gstDecoder, EOS means that playback
+		 * has reached the end of the file, and looping is either
+		 * disabled or all loops have already been run.  In the case
+		 * of RTP/RTSP, it means that the stream has terminated.
+		 */
+		inline bool IsEOS() const { return mEOS; }
+
+		/**
+		 * Return the interface type (gstDecoder::Type)
+		 */
+		virtual inline uint32_t GetType() const { return Type; }
+
+		/**
+		 * Unique type identifier of gstDecoder class.
+		 */
+		static const uint32_t Type = (1 << 1);
+
+		/**
+		 * String array of supported video file extensions, terminated
+		 * with a NULL sentinel value.  The supported extension are:
+		 *
+		 *    - MKV
+		 *    - MP4 / QT
+		 *    - AVI
+		 *    - FLV
+		 *
+		 * @see IsSupportedExtension() to check a string against this list.
+		 */
+		static const char* SupportedExtensions[];
+
+		/**
+		 * Return true if the extension is in the list of SupportedExtensions.
+		 * @param ext string containing the extension to be checked (should not contain leading dot)
+		 * @see SupportedExtensions for the list of supported video file extensions.
+		 */
+		static bool IsSupportedExtension(const char* ext);
+
+	protected:
+		gstDecoder(const videoOptions& options);
+
+		void checkMsgBus();
+		void checkBuffer();
+		bool buildLaunchStr();
+		bool discover();
+
+		bool init();
+		bool initPipeline();
+		void destroyPipeline();
+
+		inline bool isLooping() const {
+			return (mOptions.loop < 0) || ((mOptions.loop > 0) && (mLoopCount < mOptions.loop));
+		}
+
+		// appsink callbacks
+		static void onEOS(_GstAppSink* sink, void* user_data);
+
+		static GstFlowReturn onPreroll(_GstAppSink* sink, void* user_data);
+		static GstFlowReturn onBuffer(_GstAppSink* sink, void* user_data);
+
+		// WebRTC callbacks
+		static void
+		onWebsocketMessage(WebRTCPeer* peer, const char* message, size_t message_size, void* user_data);
+
+		GstBus* mBus;
+		GstElement* mPipeline;
+		_GstAppSink* mAppSink;
+
+		Event mWaitEvent;
+		std::string mLaunchStr;
+		bool mCustomSize;
+		bool mCustomRate;
+		bool mEOS;
+		size_t mLoopCount;
+
+		gstBufferManager* mBufferManager;
+
+		WebRTCServer* mWebRTCServer;
+		bool mWebRTCConnected;
+	};
+
 #endif

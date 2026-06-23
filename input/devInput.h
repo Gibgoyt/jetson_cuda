@@ -29,63 +29,59 @@
 #include <utility>
 #include <vector>
 
-
-/**
- * Typedef of device <path, name> pairs
- * @ingroup input
- */
-typedef std::vector< std::pair<std::string, std::string> > DeviceList;
-
-
-/**
- * Input device manager
- * @ingroup input
- */
-class InputDevices
-{
-public:
 	/**
-	 * Create device
+	 * Typedef of device <path, name> pairs
+	 * @ingroup input
 	 */
-	static InputDevices* Create();
+	typedef std::vector<std::pair<std::string, std::string>> DeviceList;
 
 	/**
-	 * Destructor
+	 * Input device manager
+	 * @ingroup input
 	 */
-	~InputDevices();
+	class InputDevices {
+	public:
+		/**
+		 * Create device
+		 */
+		static InputDevices* Create();
 
-	/**
-	 * Poll the devices for updates
-	 */
-	bool Poll( uint32_t timeout=0 );
+		/**
+		 * Destructor
+		 */
+		~InputDevices();
 
-	/**
- 	 * Retrieve the keyboard device
-	 */
-	inline KeyboardDevice* GetKeyboard() const			{ return mKeyboard; }
+		/**
+		 * Poll the devices for updates
+		 */
+		bool Poll(uint32_t timeout = 0);
 
-	/**
- 	 * Retrieve the gamepad device
-	 */
-	inline JoystickDevice* GetJoystick() const			{ return mJoystick; }
+		/**
+		 * Retrieve the keyboard device
+		 */
+		inline KeyboardDevice* GetKeyboard() const { return mKeyboard; }
 
-	/**
-	 * Scan /dev/input for devices
-	 */
-	static void Enumerate( DeviceList& devices );
+		/**
+		 * Retrieve the gamepad device
+		 */
+		inline JoystickDevice* GetJoystick() const { return mJoystick; }
 
-	/**
- 	 * Find /dev/input path by device name
-	 */
-	static std::string FindPathByName( const char* name );
+		/**
+		 * Scan /dev/input for devices
+		 */
+		static void Enumerate(DeviceList& devices);
 
-protected:
-	// constructor
-	InputDevices();
+		/**
+		 * Find /dev/input path by device name
+		 */
+		static std::string FindPathByName(const char* name);
 
-	KeyboardDevice* mKeyboard;
-	JoystickDevice* mJoystick;
-};
+	protected:
+		// constructor
+		InputDevices();
+
+		KeyboardDevice* mKeyboard;
+		JoystickDevice* mJoystick;
+	};
 
 #endif
-

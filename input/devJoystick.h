@@ -28,40 +28,40 @@
 #include <string.h>
 #include <string>
 
-
-/**
- * Joystick device
- * @ingroup input
- */
-class JoystickDevice
-{
-public:
 	/**
-	 * Create device
+	 * Joystick device
+	 * @ingroup input
 	 */
-	static JoystickDevice* Create( const char* device="Microntek              USB Joystick          " );
+	class JoystickDevice {
+	public:
+		/**
+		 * Create device
+		 */
+		static JoystickDevice* Create(
+		    const char* device = "Microntek              USB Joystick          "
+		);
 
-	/**
-	 * Destructor
-	 */
-	~JoystickDevice();
+		/**
+		 * Destructor
+		 */
+		~JoystickDevice();
 
-	/**
-	 * Poll the device for updates
-	 */
-	bool Poll( uint32_t timeout=0 );
+		/**
+		 * Poll the device for updates
+		 */
+		bool Poll(uint32_t timeout = 0);
 
-protected:
-	// constructor
-	JoystickDevice();
+	protected:
+		// constructor
+		JoystickDevice();
 
-	static const int MAX_AXIS = 256;
+		static const int MAX_AXIS = 256;
 
-	float mAxisNorm[MAX_AXIS];
-	int   mAxisRaw[MAX_AXIS];	
-	int   mFD;
+		float mAxisNorm[MAX_AXIS];
+		int mAxisRaw[MAX_AXIS];
+		int mFD;
 
-	std::string mPath;
-};
+		std::string mPath;
+	};
 
 #endif

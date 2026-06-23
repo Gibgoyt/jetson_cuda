@@ -19,18 +19,16 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
- 
+
 #ifndef __PYTHON_BINDINGS_VIDEO__
 #define __PYTHON_BINDINGS_VIDEO__
 
 #include "PyUtils.h"
 
+	// Register functions
+	PyMethodDef* PyVideo_RegisterFunctions();
 
-// Register functions
-PyMethodDef* PyVideo_RegisterFunctions();
-
-// Register types
-bool PyVideo_RegisterTypes( PyObject* module );
-
+	// Register types
+	bool PyVideo_RegisterTypes(PyObject* module);
 
 #endif

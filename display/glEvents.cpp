@@ -19,34 +19,26 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
- 
+
 #include "glDisplay.h"
 #include "glEvents.h"
 
-
 // glRegisterEvents
-void glRegisterEvents( glEventHandler callback, void* user, uint32_t displayID )
-{
+void glRegisterEvents(glEventHandler callback, void* user, uint32_t displayID) {
 	glDisplay* display = glGetDisplay(displayID);
 
-	if( display != NULL )
+	if (display != NULL)
 		display->AddEventHandler(callback, user);
 }
 
-
 // glUnregisterEvents
-void glUnregisterEvents( glEventHandler callback, void* user )
-{
+void glUnregisterEvents(glEventHandler callback, void* user) {
 	const uint32_t numDisplays = glGetNumDisplays();
 
-	for( uint32_t n=0; n < numDisplays; n++ )
-	{
+	for (uint32_t n = 0; n < numDisplays; n++) {
 		glDisplay* display = glGetDisplay(n);
 
-		if( display != NULL )
+		if (display != NULL)
 			display->RemoveEventHandler(callback, user);
 	}
 }
-
-
-

@@ -22,13 +22,11 @@
 
 #include "cudaInteropKernels.h"
 
-
-__global__ void gpuGeneratePointGrid( PointVertex* points, int N, float world_size, float time )
-{
+__global__ void gpuGeneratePointGrid(PointVertex* points, int N, float world_size, float time) {
 	const int idx_x = blockIdx.x * blockDim.x + threadIdx.x;
 	const int idx_z = blockIdx.y * blockDim.y + threadIdx.y;
 
-	if( idx_x >= N || idx_z >= N )
+	if (idx_x >= N || idx_z >= N)
 		return;
 
 	const float half_size = world_size * 0.5f;
@@ -50,18 +48,16 @@ __global__ void gpuGeneratePointGrid( PointVertex* points, int N, float world_si
 	points[idx_z * N + idx_x] = vert;
 }
 
-
 // cudaGeneratePointGrid
-cudaError_t cudaGeneratePointGrid( PointVertex* points, uint32_t N, float world_size, float time )
-{
-	if( !points )
+cudaError_t cudaGeneratePointGrid(PointVertex* points, uint32_t N, float world_size, float time) {
+	if (!points)
 		return cudaErrorInvalidDevicePointer;
 
-	if( N == 0 )
+	if (N == 0)
 		return cudaErrorInvalidValue;
 
 	const dim3 blockDim(8, 8);
-	const dim3 gridDim(iDivUp(N,blockDim.x), iDivUp(N,blockDim.y));
+	const dim3 gridDim(iDivUp(N, blockDim.x), iDivUp(N, blockDim.y));
 
 	gpuGeneratePointGrid<<<gridDim, blockDim>>>(points, N, world_size, time);
 

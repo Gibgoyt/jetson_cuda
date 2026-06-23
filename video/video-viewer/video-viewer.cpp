@@ -28,20 +28,16 @@
 
 #include <signal.h>
 
-
 bool signal_recieved = false;
 
-void sig_handler(int signo)
-{
-	if( signo == SIGINT )
-	{
+void sig_handler(int signo) {
+	if (signo == SIGINT) {
 		LogInfo("received SIGINT\n");
 		signal_recieved = true;
 	}
 }
 
-int usage()
-{
+int usage() {
 	printf("usage: video-viewer [--help] input_URI [output_URI]\n\n");
 	printf("View/output a video or image stream.\n");
 	printf("See below for additional arguments that may not be shown above.\n\n");
@@ -56,95 +52,94 @@ int usage()
 	return 0;
 }
 
-int main( int argc, char** argv )
-{
+int main(int argc, char** argv) {
 	/*
 	 * parse command line
 	 */
 	commandLine cmdLine(argc, argv);
 
-	if( cmdLine.GetFlag("help") )
+	if (cmdLine.GetFlag("help"))
 		return usage();
-
 
 	/*
 	 * attach signal handler
-	 */	
-	if( signal(SIGINT, sig_handler) == SIG_ERR )
+	 */
+	if (signal(SIGINT, sig_handler) == SIG_ERR)
 		LogError("can't catch SIGINT\n");
-
 
 	/*
 	 * create input video stream
 	 */
 	videoSource* input = videoSource::Create(cmdLine, ARG_POSITION(0));
 
-	if( !input )
-	{
+	if (!input) {
 		LogError("video-viewer:  failed to create input stream\n");
 		return 0;
 	}
-
 
 	/*
 	 * create output video stream
 	 */
 	videoOutput* output = videoOutput::Create(cmdLine, ARG_POSITION(1));
-	
-	if( !output )
-	{
+
+	if (!output) {
 		LogError("video-viewer:  failed to create output stream\n");
 		return 0;
 	}
-	
 
 	/*
 	 * capture/display loop
 	 */
 	uint32_t numFrames = 0;
 
-	while( !signal_recieved )
-	{
+	while (!signal_recieved) {
 		uchar3* image = NULL;
 		int status = 0;
-		
-		if( !input->Capture(&image, &status) )
-		{
-			if( status == videoSource::TIMEOUT )
+
+		if (!input->Capture(&image, &status)) {
+			if (status == videoSource::TIMEOUT)
 				continue;
-			
-			break; // EOS
+
+			break;  // EOS
 		}
 
-		if( numFrames % 25 == 0 || numFrames < 15 )
-			LogVerbose("video-viewer:  captured %u frames (%ux%u)\n", numFrames, input->GetWidth(), input->GetHeight());
-		
+		if (numFrames % 25 == 0 || numFrames < 15)
+			LogVerbose(
+			    "video-viewer:  captured %u frames (%ux%u)\n",
+			    numFrames,
+			    input->GetWidth(),
+			    input->GetHeight()
+			);
+
 		numFrames++;
-		
-		if( output != NULL )
-		{
+
+		if (output != NULL) {
 			output->Render(image, input->GetWidth(), input->GetHeight());
 
 			// update status bar
 			char str[256];
-			sprintf(str, "Video Viewer (%ux%u) | %.1f FPS", input->GetWidth(), input->GetHeight(), output->GetFrameRate());
-			output->SetStatus(str);	
+			sprintf(
+			    str,
+			    "Video Viewer (%ux%u) | %.1f FPS",
+			    input->GetWidth(),
+			    input->GetHeight(),
+			    output->GetFrameRate()
+			);
+			output->SetStatus(str);
 
 			// check if the user quit
-			if( !output->IsStreaming() )
+			if (!output->IsStreaming())
 				break;
 		}
 	}
-
 
 	/*
 	 * destroy resources
 	 */
 	printf("video-viewer:  shutting down...\n");
-	
+
 	SAFE_DELETE(input);
 	SAFE_DELETE(output);
 
 	printf("video-viewer:  shutdown complete\n");
 }
-

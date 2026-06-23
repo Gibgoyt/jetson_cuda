@@ -28,25 +28,20 @@
 #include <signal.h>
 #include <unistd.h>
 
-
 #define TEST_PIPELINE_1 "videotestsrc pattern=smpte ! x264enc ! rtph264pay name=pay0"
-#define TEST_PIPELINE_2 "videotestsrc pattern=zone-plate kx2=20 ky2=20 kt=1 ! x264enc ! rtph264pay name=pay0"
-
+#define TEST_PIPELINE_2                                                                            \
+	"videotestsrc pattern=zone-plate kx2=20 ky2=20 kt=1 ! x264enc ! rtph264pay name=pay0"
 
 bool signal_recieved = false;
 
-void sig_handler(int signo)
-{
-	if( signo == SIGINT )
-	{
+void sig_handler(int signo) {
+	if (signo == SIGINT) {
 		LogInfo("received SIGINT\n");
 		signal_recieved = true;
 	}
 }
 
-
-int usage()
-{
+int usage() {
 	printf("usage: rtsp-server [--help] --port PORT\n\n");
 	printf("See below for additional arguments that may not be shown above.\n\n");
 	printf("%s", Log::Usage());
@@ -54,59 +49,51 @@ int usage()
 	return 0;
 }
 
-
-int main( int argc, char** argv )
-{
+int main(int argc, char** argv) {
 	/*
 	 * parse command line
 	 */
 	commandLine cmdLine(argc, argv);
 
-	if( cmdLine.GetFlag("help") )
+	if (cmdLine.GetFlag("help"))
 		return usage();
 
 	Log::ParseCmdLine(cmdLine);
-	
-	
+
 	/*
 	 * attach signal handler
 	 */
-	if( signal(SIGINT, sig_handler) == SIG_ERR )
+	if (signal(SIGINT, sig_handler) == SIG_ERR)
 		LogError("can't catch SIGINT\n");
-	
-	
+
 	/*
 	 * create server
 	 */
 	const uint32_t port = cmdLine.GetUnsignedInt("port", RTSP_DEFAULT_PORT);
-	
+
 	RTSPServer* server = RTSPServer::Create(port);
-	
-	if( !server )
+
+	if (!server)
 		return 1;
-	
+
 	server->AddRoute("/test", TEST_PIPELINE_1);
 	server->AddRoute("/test2", TEST_PIPELINE_2);
-	
-	
+
 	/*
 	 * main loop
 	 */
-	while( !signal_recieved )
-	{
+	while (!signal_recieved) {
 		// the server runs in it's own thread, so just poll for exit conditions
 		// normally RTSPServer runs in applications that have their own main processing loop
 		usleep(500 * 1000);
 	}
-	
-	
+
 	/*
 	 * destroy resources
 	 */
 	printf("rtsp-server:  shutting down...\n");
-	
+
 	server->Release();
 
 	printf("rtsp-server:  shutdown complete\n");
 }
-

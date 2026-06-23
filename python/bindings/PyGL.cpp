@@ -26,53 +26,61 @@
 #include "glDisplay.h"
 #include "logging.h"
 
-
 // PyDisplay container
 typedef struct {
-    PyObject_HEAD
-    glDisplay* display;
+	PyObject_HEAD glDisplay* display;
 } PyDisplay_Object;
 
-
 // New
-static PyObject* PyDisplay_New( PyTypeObject *type, PyObject *args, PyObject *kwds )
-{
+static PyObject* PyDisplay_New(PyTypeObject* type, PyObject* args, PyObject* kwds) {
 	LogDebug(LOG_PY_UTILS "PyDisplay_New()\n");
-	
+
 	// allocate a new container
 	PyDisplay_Object* self = (PyDisplay_Object*)type->tp_alloc(type, 0);
-	
-	if( !self )
-	{
-		PyErr_SetString(PyExc_MemoryError, LOG_PY_UTILS "glDisplay tp_alloc() failed to allocate a new object");
+
+	if (!self) {
+		PyErr_SetString(
+		    PyExc_MemoryError,
+		    LOG_PY_UTILS "glDisplay tp_alloc() failed to allocate a new object"
+		);
 		return NULL;
 	}
-	
+
 	self->display = NULL;
 	return (PyObject*)self;
 }
 
-
 // Init
-static int PyDisplay_Init( PyDisplay_Object* self, PyObject *args, PyObject *kwds )
-{
+static int PyDisplay_Init(PyDisplay_Object* self, PyObject* args, PyObject* kwds) {
 	LogDebug(LOG_PY_UTILS "PyDisplay_Init()\n");
-	
+
 	// parse arguments
 	int width = -1;
 	int height = -1;
-	float bg_color[] = { 0.05f, 0.05f, 0.05f, 1.0f };
+	float bg_color[] = {0.05f, 0.05f, 0.05f, 1.0f};
 	const char* title = glDisplay::DEFAULT_TITLE;
 	static char* kwlist[] = {"title", "width", "height", "r", "g", "b", "a", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|siiffff", kwlist, &title, &width, &height, &bg_color[0], &bg_color[1], &bg_color[2], &bg_color[3]))
+	if (!PyArg_ParseTupleAndKeywords(
+	        args,
+	        kwds,
+	        "|siiffff",
+	        kwlist,
+	        &title,
+	        &width,
+	        &height,
+	        &bg_color[0],
+	        &bg_color[1],
+	        &bg_color[2],
+	        &bg_color[3]
+	    ))
 		return -1;
-  
-	// create the display object
-	glDisplay* display = glDisplay::Create(title, width, height, bg_color[0], bg_color[1], bg_color[2], bg_color[3]);
 
-	if( !display )
-	{
+	// create the display object
+	glDisplay* display =
+	    glDisplay::Create(title, width, height, bg_color[0], bg_color[1], bg_color[2], bg_color[3]);
+
+	if (!display) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "failed to create glDisplay device");
 		return -1;
 	}
@@ -81,29 +89,23 @@ static int PyDisplay_Init( PyDisplay_Object* self, PyObject *args, PyObject *kwd
 	return 0;
 }
 
-
 // Deallocate
-static void PyDisplay_Dealloc( PyDisplay_Object* self )
-{
+static void PyDisplay_Dealloc(PyDisplay_Object* self) {
 	LogDebug(LOG_PY_UTILS "PyDisplay_Dealloc()\n");
 
 	// free the display
-	if( self->display != NULL )
-	{
+	if (self->display != NULL) {
 		delete self->display;
 		self->display = NULL;
 	}
-	
+
 	// free the container
 	Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
-
 // BeginRender
-static PyObject* PyDisplay_BeginRender( PyDisplay_Object* self, PyObject* args, PyObject* kwds )
-{
-	if( !self || !self->display )
-	{
+static PyObject* PyDisplay_BeginRender(PyDisplay_Object* self, PyObject* args, PyObject* kwds) {
+	if (!self || !self->display) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay invalid object instance");
 		return NULL;
 	}
@@ -112,33 +114,27 @@ static PyObject* PyDisplay_BeginRender( PyDisplay_Object* self, PyObject* args, 
 	int userEvents = 1;
 	static char* kwlist[] = {"userEvents", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|i", kwlist, &userEvents))
+	if (!PyArg_ParseTupleAndKeywords(args, kwds, "|i", kwlist, &userEvents))
 		return NULL;
 
-	self->display->BeginRender( userEvents > 0 ? true : false );
-	Py_RETURN_NONE; 
+	self->display->BeginRender(userEvents > 0 ? true : false);
+	Py_RETURN_NONE;
 }
 
-
 // EndRender
-static PyObject* PyDisplay_EndRender( PyDisplay_Object* self )
-{
-	if( !self || !self->display )
-	{
+static PyObject* PyDisplay_EndRender(PyDisplay_Object* self) {
+	if (!self || !self->display) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay invalid object instance");
 		return NULL;
 	}
 
 	self->display->EndRender();
-	Py_RETURN_NONE; 
+	Py_RETURN_NONE;
 }
 
-
 // Render
-static PyObject* PyDisplay_Render( PyDisplay_Object* self, PyObject* args, PyObject* kwds )
-{
-	if( !self || !self->display )
-	{
+static PyObject* PyDisplay_Render(PyDisplay_Object* self, PyObject* args, PyObject* kwds) {
+	if (!self || !self->display) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay invalid object instance");
 		return NULL;
 	}
@@ -149,14 +145,26 @@ static PyObject* PyDisplay_Render( PyDisplay_Object* self, PyObject* args, PyObj
 	float x = 0.0f;
 	float y = 0.0f;
 
-	int width  = 0;
+	int width = 0;
 	int height = 0;
-	int norm   = 1;
+	int norm = 1;
 
 	const char* format_str = "rgba32f";
 	static char* kwlist[] = {"image", "width", "height", "x", "y", "normalize", "format", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O|iiffis", kwlist, &capsule, &width, &height, &x, &y, &norm, &format_str))
+	if (!PyArg_ParseTupleAndKeywords(
+	        args,
+	        kwds,
+	        "O|iiffis",
+	        kwlist,
+	        &capsule,
+	        &width,
+	        &height,
+	        &x,
+	        &y,
+	        &norm,
+	        &format_str
+	    ))
 		return NULL;
 
 	// parse format string
@@ -165,7 +173,7 @@ static PyObject* PyDisplay_Render( PyDisplay_Object* self, PyObject* args, PyObj
 	// get pointer to image data
 	void* ptr = PyCUDA_GetImage(capsule, &width, &height, &format);
 
-	if( !ptr )
+	if (!ptr)
 		return NULL;
 
 	// render the image
@@ -175,12 +183,9 @@ static PyObject* PyDisplay_Render( PyDisplay_Object* self, PyObject* args, PyObj
 	Py_RETURN_NONE;
 }
 
-
 // Render
-static PyObject* PyDisplay_RenderOnce( PyDisplay_Object* self, PyObject* args, PyObject* kwds )
-{
-	if( !self || !self->display )
-	{
+static PyObject* PyDisplay_RenderOnce(PyDisplay_Object* self, PyObject* args, PyObject* kwds) {
+	if (!self || !self->display) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay invalid object instance");
 		return NULL;
 	}
@@ -191,14 +196,25 @@ static PyObject* PyDisplay_RenderOnce( PyDisplay_Object* self, PyObject* args, P
 	float x = 5.0f;
 	float y = 30.0f;
 
-	int width  = 0;
+	int width = 0;
 	int height = 0;
-	int norm   = 1;
+	int norm = 1;
 
 	const char* format_str = "rgba32f";
 	static char* kwlist[] = {"image", "width", "height", "x", "y", "normalize", "format", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O|iiffis", kwlist, &capsule, &width, &height, &x, &y, &norm))
+	if (!PyArg_ParseTupleAndKeywords(
+	        args,
+	        kwds,
+	        "O|iiffis",
+	        kwlist,
+	        &capsule,
+	        &width,
+	        &height,
+	        &x,
+	        &y,
+	        &norm
+	    ))
 		return NULL;
 
 	// parse format string
@@ -207,7 +223,7 @@ static PyObject* PyDisplay_RenderOnce( PyDisplay_Object* self, PyObject* args, P
 	// get pointer to image data
 	void* ptr = PyCUDA_GetImage(capsule, &width, &height, &format);
 
-	if( !ptr )
+	if (!ptr)
 		return NULL;
 
 	// render the image
@@ -217,12 +233,9 @@ static PyObject* PyDisplay_RenderOnce( PyDisplay_Object* self, PyObject* args, P
 	Py_RETURN_NONE;
 }
 
-
 // SetTitle
-static PyObject* PyDisplay_SetTitle( PyDisplay_Object* self, PyObject* args )
-{
-	if( !self || !self->display )
-	{
+static PyObject* PyDisplay_SetTitle(PyDisplay_Object* self, PyObject* args) {
+	if (!self || !self->display) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay invalid object instance");
 		return NULL;
 	}
@@ -230,42 +243,46 @@ static PyObject* PyDisplay_SetTitle( PyDisplay_Object* self, PyObject* args )
 	// parse arguments
 	const char* title = NULL;
 
-	if( !PyArg_ParseTuple(args, "s", &title) )
+	if (!PyArg_ParseTuple(args, "s", &title))
 		return NULL;
 
-	if( title != NULL )
+	if (title != NULL)
 		self->display->SetTitle(title);
 
 	Py_RETURN_NONE;
 }
 
-
 // SetBackgroundColor
-static PyObject* PyDisplay_SetBackgroundColor( PyDisplay_Object* self, PyObject* args, PyObject* kwds )
-{
-	if( !self || !self->display )
-	{
+static PyObject*
+PyDisplay_SetBackgroundColor(PyDisplay_Object* self, PyObject* args, PyObject* kwds) {
+	if (!self || !self->display) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay invalid object instance");
 		return NULL;
 	}
 
 	// parse arguments
-	float bg_color[] = { 0.05f, 0.05f, 0.05f, 1.0f };
+	float bg_color[] = {0.05f, 0.05f, 0.05f, 1.0f};
 	static char* kwlist[] = {"r", "g", "b", "a", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|ffff", kwlist, &bg_color[0], &bg_color[1], &bg_color[2], &bg_color[3]))
+	if (!PyArg_ParseTupleAndKeywords(
+	        args,
+	        kwds,
+	        "|ffff",
+	        kwlist,
+	        &bg_color[0],
+	        &bg_color[1],
+	        &bg_color[2],
+	        &bg_color[3]
+	    ))
 		return NULL;
 
 	self->display->SetBackgroundColor(bg_color[0], bg_color[1], bg_color[2], bg_color[3]);
 	Py_RETURN_NONE;
 }
 
-
 // GetFPS
-static PyObject* PyDisplay_GetFPS( PyDisplay_Object* self )
-{
-	if( !self || !self->display )
-	{
+static PyObject* PyDisplay_GetFPS(PyDisplay_Object* self) {
+	if (!self || !self->display) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay invalid object instance");
 		return NULL;
 	}
@@ -273,12 +290,9 @@ static PyObject* PyDisplay_GetFPS( PyDisplay_Object* self )
 	return PyFloat_FromDouble(self->display->GetFPS());
 }
 
-
 // GetWidth
-static PyObject* PyDisplay_GetWidth( PyDisplay_Object* self )
-{
-	if( !self || !self->display )
-	{
+static PyObject* PyDisplay_GetWidth(PyDisplay_Object* self) {
+	if (!self || !self->display) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay invalid object instance");
 		return NULL;
 	}
@@ -286,12 +300,9 @@ static PyObject* PyDisplay_GetWidth( PyDisplay_Object* self )
 	return PYLONG_FROM_UNSIGNED_LONG(self->display->GetWidth());
 }
 
-
 // GetHeight
-static PyObject* PyDisplay_GetHeight( PyDisplay_Object* self )
-{
-	if( !self || !self->display )
-	{
+static PyObject* PyDisplay_GetHeight(PyDisplay_Object* self) {
+	if (!self || !self->display) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay invalid object instance");
 		return NULL;
 	}
@@ -299,12 +310,9 @@ static PyObject* PyDisplay_GetHeight( PyDisplay_Object* self )
 	return PYLONG_FROM_UNSIGNED_LONG(self->display->GetHeight());
 }
 
-
 // IsOpen
-static PyObject* PyDisplay_IsOpen( PyDisplay_Object* self )
-{
-	if( !self || !self->display )
-	{
+static PyObject* PyDisplay_IsOpen(PyDisplay_Object* self) {
+	if (!self || !self->display) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay invalid object instance");
 		return NULL;
 	}
@@ -312,12 +320,9 @@ static PyObject* PyDisplay_IsOpen( PyDisplay_Object* self )
 	PY_RETURN_BOOL(self->display->IsOpen());
 }
 
-
 // IsClosed
-static PyObject* PyDisplay_IsClosed( PyDisplay_Object* self )
-{
-	if( !self || !self->display )
-	{
+static PyObject* PyDisplay_IsClosed(PyDisplay_Object* self) {
+	if (!self || !self->display) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay invalid object instance");
 		return NULL;
 	}
@@ -325,12 +330,9 @@ static PyObject* PyDisplay_IsClosed( PyDisplay_Object* self )
 	PY_RETURN_BOOL(self->display->IsClosed());
 }
 
-
 // IsMaximized
-static PyObject* PyDisplay_IsMaximized( PyDisplay_Object* self )
-{
-	if( !self || !self->display )
-	{
+static PyObject* PyDisplay_IsMaximized(PyDisplay_Object* self) {
+	if (!self || !self->display) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay invalid object instance");
 		return NULL;
 	}
@@ -338,12 +340,9 @@ static PyObject* PyDisplay_IsMaximized( PyDisplay_Object* self )
 	PY_RETURN_BOOL(self->display->IsMaximized());
 }
 
-
 // SetMaximized
-static PyObject* PyDisplay_SetMaximized( PyDisplay_Object* self, PyObject* args )
-{
-	if( !self || !self->display )
-	{
+static PyObject* PyDisplay_SetMaximized(PyDisplay_Object* self, PyObject* args) {
+	if (!self || !self->display) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay invalid object instance");
 		return NULL;
 	}
@@ -351,19 +350,16 @@ static PyObject* PyDisplay_SetMaximized( PyDisplay_Object* self, PyObject* args 
 	// parse arguments
 	int value = 0;
 
-	if( !PyArg_ParseTuple(args, "p", &value) )
+	if (!PyArg_ParseTuple(args, "p", &value))
 		return NULL;
 
 	self->display->SetMaximized(value > 0);
 	Py_RETURN_NONE;
 }
 
-
 // IsFullscreen
-static PyObject* PyDisplay_IsFullscreen( PyDisplay_Object* self )
-{
-	if( !self || !self->display )
-	{
+static PyObject* PyDisplay_IsFullscreen(PyDisplay_Object* self) {
+	if (!self || !self->display) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay invalid object instance");
 		return NULL;
 	}
@@ -371,12 +367,9 @@ static PyObject* PyDisplay_IsFullscreen( PyDisplay_Object* self )
 	PY_RETURN_BOOL(self->display->IsFullscreen());
 }
 
-
 // SetFullscreen
-static PyObject* PyDisplay_SetFullscreen( PyDisplay_Object* self, PyObject* args )
-{
-	if( !self || !self->display )
-	{
+static PyObject* PyDisplay_SetFullscreen(PyDisplay_Object* self, PyObject* args) {
+	if (!self || !self->display) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay invalid object instance");
 		return NULL;
 	}
@@ -384,81 +377,108 @@ static PyObject* PyDisplay_SetFullscreen( PyDisplay_Object* self, PyObject* args
 	// parse arguments
 	int value = 0;
 
-	if( !PyArg_ParseTuple(args, "p", &value) )
+	if (!PyArg_ParseTuple(args, "p", &value))
 		return NULL;
 
 	self->display->SetFullscreen(value > 0);
 	Py_RETURN_NONE;
 }
 
-
 // ProcessEvents
-static PyObject* PyDisplay_ProcessEvents( PyDisplay_Object* self )
-{
-	if( !self || !self->display )
-	{
+static PyObject* PyDisplay_ProcessEvents(PyDisplay_Object* self) {
+	if (!self || !self->display) {
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay invalid object instance");
 		return NULL;
 	}
 
 	self->display->ProcessEvents();
-	Py_RETURN_NONE; 
+	Py_RETURN_NONE;
 }
 
-
-
 //-------------------------------------------------------------------------------
-static PyTypeObject PyDisplay_Type = 
-{
-    PyVarObject_HEAD_INIT(NULL, 0)
-};
+static PyTypeObject PyDisplay_Type = {PyVarObject_HEAD_INIT(NULL, 0)};
 
-static PyMethodDef PyDisplay_Methods[] = 
-{
-	{ "BeginRender", (PyCFunction)PyDisplay_BeginRender, METH_VARARGS|METH_KEYWORDS, "Clear window and begin rendering a frame"},
-	{ "EndRender", (PyCFunction)PyDisplay_EndRender, METH_NOARGS, "Finish rendering and refresh / flip the backbuffer"},
-	{ "Render", (PyCFunction)PyDisplay_Render, METH_VARARGS|METH_KEYWORDS, "Render a CUDA float4 image using OpenGL interop"},
-	{ "RenderOnce", (PyCFunction)PyDisplay_RenderOnce, METH_VARARGS|METH_KEYWORDS, "Begin the frame, render a CUDA float4 image using OpenGL interop, and then end the frame"},
-	{ "GetFPS", (PyCFunction)PyDisplay_GetFPS, METH_NOARGS, "Return the average frame time (in milliseconds)"},
-	{ "GetWidth", (PyCFunction)PyDisplay_GetWidth, METH_NOARGS, "Return the width of the window (in pixels)"},
-	{ "GetHeight", (PyCFunction)PyDisplay_GetHeight, METH_NOARGS, "Return the height of the window (in pixels)"},
-	{ "IsOpen", (PyCFunction)PyDisplay_IsOpen, METH_NOARGS, "Returns true if the window is open"},
-	{ "IsClosed", (PyCFunction)PyDisplay_IsClosed, METH_NOARGS, "Returns true if the window has been closed"},
-	{ "IsMaximized", (PyCFunction)PyDisplay_IsMaximized, METH_NOARGS, "Returns true if the window is maximized"},
-	{ "SetMaximized", (PyCFunction)PyDisplay_SetMaximized, METH_VARARGS, "Sets the window to maximized/unmaximized based on bool argument"},
-	{ "IsFullscreen", (PyCFunction)PyDisplay_IsFullscreen, METH_NOARGS, "Returns true if the window is fullscreen"},
-	{ "SetFullscreen", (PyCFunction)PyDisplay_SetFullscreen, METH_VARARGS, "Sets the window to fullscreen mode based on bool argument"},
-	{ "SetBackgroundColor", (PyCFunction)PyDisplay_SetBackgroundColor, METH_VARARGS|METH_KEYWORDS, "Set the window background color"},
-	{ "SetTitle", (PyCFunction)PyDisplay_SetTitle, METH_VARARGS, "Set the window title string"},
-	{ "ProcessEvents", (PyCFunction)PyDisplay_ProcessEvents, METH_NOARGS, "Process UI events"},
-	{NULL}  /* Sentinel */
+static PyMethodDef PyDisplay_Methods[] = {
+    {"BeginRender",
+     (PyCFunction)PyDisplay_BeginRender,
+     METH_VARARGS | METH_KEYWORDS,
+     "Clear window and begin rendering a frame"},
+    {"EndRender",
+     (PyCFunction)PyDisplay_EndRender,
+     METH_NOARGS,
+     "Finish rendering and refresh / flip the backbuffer"},
+    {"Render",
+     (PyCFunction)PyDisplay_Render,
+     METH_VARARGS | METH_KEYWORDS,
+     "Render a CUDA float4 image using OpenGL interop"},
+    {"RenderOnce",
+     (PyCFunction)PyDisplay_RenderOnce,
+     METH_VARARGS | METH_KEYWORDS,
+     "Begin the frame, render a CUDA float4 image using OpenGL interop, and then end the frame"},
+    {"GetFPS",
+     (PyCFunction)PyDisplay_GetFPS,
+     METH_NOARGS,
+     "Return the average frame time (in milliseconds)"},
+    {"GetWidth",
+     (PyCFunction)PyDisplay_GetWidth,
+     METH_NOARGS,
+     "Return the width of the window (in pixels)"},
+    {"GetHeight",
+     (PyCFunction)PyDisplay_GetHeight,
+     METH_NOARGS,
+     "Return the height of the window (in pixels)"},
+    {"IsOpen", (PyCFunction)PyDisplay_IsOpen, METH_NOARGS, "Returns true if the window is open"},
+    {"IsClosed",
+     (PyCFunction)PyDisplay_IsClosed,
+     METH_NOARGS,
+     "Returns true if the window has been closed"},
+    {"IsMaximized",
+     (PyCFunction)PyDisplay_IsMaximized,
+     METH_NOARGS,
+     "Returns true if the window is maximized"},
+    {"SetMaximized",
+     (PyCFunction)PyDisplay_SetMaximized,
+     METH_VARARGS,
+     "Sets the window to maximized/unmaximized based on bool argument"},
+    {"IsFullscreen",
+     (PyCFunction)PyDisplay_IsFullscreen,
+     METH_NOARGS,
+     "Returns true if the window is fullscreen"},
+    {"SetFullscreen",
+     (PyCFunction)PyDisplay_SetFullscreen,
+     METH_VARARGS,
+     "Sets the window to fullscreen mode based on bool argument"},
+    {"SetBackgroundColor",
+     (PyCFunction)PyDisplay_SetBackgroundColor,
+     METH_VARARGS | METH_KEYWORDS,
+     "Set the window background color"},
+    {"SetTitle", (PyCFunction)PyDisplay_SetTitle, METH_VARARGS, "Set the window title string"},
+    {"ProcessEvents", (PyCFunction)PyDisplay_ProcessEvents, METH_NOARGS, "Process UI events"},
+    {NULL} /* Sentinel */
 };
 
 // Register types
-bool PyGL_RegisterTypes( PyObject* module )
-{
-	if( !module )
+bool PyGL_RegisterTypes(PyObject* module) {
+	if (!module)
 		return false;
 
-	PyDisplay_Type.tp_name 	   = PY_UTILS_MODULE_NAME ".glDisplay";
+	PyDisplay_Type.tp_name = PY_UTILS_MODULE_NAME ".glDisplay";
 	PyDisplay_Type.tp_basicsize = sizeof(PyDisplay_Object);
-	PyDisplay_Type.tp_flags 	   = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
-	PyDisplay_Type.tp_methods   = PyDisplay_Methods;
-	PyDisplay_Type.tp_new 	   = PyDisplay_New;
-	PyDisplay_Type.tp_init	   = (initproc)PyDisplay_Init;
-	PyDisplay_Type.tp_dealloc   = (destructor)PyDisplay_Dealloc;
-	PyDisplay_Type.tp_doc  	   = "OpenGL display window";
-	 
-	if( PyType_Ready(&PyDisplay_Type) < 0 )
-	{
+	PyDisplay_Type.tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
+	PyDisplay_Type.tp_methods = PyDisplay_Methods;
+	PyDisplay_Type.tp_new = PyDisplay_New;
+	PyDisplay_Type.tp_init = (initproc)PyDisplay_Init;
+	PyDisplay_Type.tp_dealloc = (destructor)PyDisplay_Dealloc;
+	PyDisplay_Type.tp_doc = "OpenGL display window";
+
+	if (PyType_Ready(&PyDisplay_Type) < 0) {
 		LogError(LOG_PY_UTILS "glDisplay PyType_Ready() failed\n");
 		return false;
 	}
-	
+
 	Py_INCREF(&PyDisplay_Type);
-    
-	if( PyModule_AddObject(module, "glDisplay", (PyObject*)&PyDisplay_Type) < 0 )
-	{
+
+	if (PyModule_AddObject(module, "glDisplay", (PyObject*)&PyDisplay_Type) < 0) {
 		LogError(LOG_PY_UTILS "glDisplay PyModule_AddObject('glDisplay') failed\n");
 		return false;
 	}
@@ -466,15 +486,11 @@ bool PyGL_RegisterTypes( PyObject* module )
 	return true;
 }
 
-static PyMethodDef PyGL_Functions[] = 
-{
-	{NULL}  /* Sentinel */
+static PyMethodDef PyGL_Functions[] = {
+    {NULL} /* Sentinel */
 };
 
 // Register functions
-PyMethodDef* PyGL_RegisterFunctions()
-{
+PyMethodDef* PyGL_RegisterFunctions() {
 	return PyGL_Functions;
 }
-
-

@@ -27,22 +27,16 @@
 
 #include <signal.h>
 
-
-
 bool signal_recieved = false;
 
-void sig_handler(int signo)
-{
-	if( signo == SIGINT )
-	{
+void sig_handler(int signo) {
+	if (signo == SIGINT) {
 		LogInfo("received SIGINT\n");
 		signal_recieved = true;
 	}
 }
 
-
-int usage()
-{
+int usage() {
 	printf("usage: webrtc-server [--help] --port PORT\n\n");
 	printf("See below for additional arguments that may not be shown above.\n\n");
 	printf("%s", Log::Usage());
@@ -50,54 +44,45 @@ int usage()
 	return 0;
 }
 
-
-
-int main( int argc, char** argv )
-{
+int main(int argc, char** argv) {
 	/*
 	 * parse command line
 	 */
 	commandLine cmdLine(argc, argv);
 
-	if( cmdLine.GetFlag("help") )
+	if (cmdLine.GetFlag("help"))
 		return usage();
 
 	Log::ParseCmdLine(cmdLine);
-	
-	
+
 	/*
 	 * attach signal handler
 	 */
-	if( signal(SIGINT, sig_handler) == SIG_ERR )
+	if (signal(SIGINT, sig_handler) == SIG_ERR)
 		LogError("can't catch SIGINT\n");
-	
-	
+
 	/*
 	 * create server
 	 */
 	const uint32_t port = cmdLine.GetUnsignedInt("port", WEBRTC_DEFAULT_PORT);
 	WebRTCServer* server = WebRTCServer::Create(port);
-	
-	if( !server )
+
+	if (!server)
 		return 1;
-	
-	
+
 	/*
 	 * main loop
 	 */
-	while( !signal_recieved )
-	{
+	while (!signal_recieved) {
 		server->ProcessRequests();
 	}
-	
-	
+
 	/*
 	 * destroy resources
 	 */
 	printf("webrtc-server:  shutting down...\n");
-	
+
 	server->Release();
 
 	printf("webrtc-server:  shutdown complete\n");
 }
-

@@ -19,7 +19,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
- 
+
 #include "imageLoader.h"
 #include "imageIO.h"
 
@@ -28,27 +28,36 @@
 
 #include <strings.h>
 
-
 // supported image file extensions
-const char* imageLoader::SupportedExtensions[] = { "jpg", "jpeg", "png", 
-										 "tga", "targa", "bmp", 
-										 "gif", "psd", "hdr",
-										 "pic", "pnm", "pbm",
-										 "ppm", "pgm", NULL };
+const char* imageLoader::SupportedExtensions[] = {
+    "jpg",
+    "jpeg",
+    "png",
+    "tga",
+    "targa",
+    "bmp",
+    "gif",
+    "psd",
+    "hdr",
+    "pic",
+    "pnm",
+    "pbm",
+    "ppm",
+    "pgm",
+    NULL
+};
 
-bool imageLoader::IsSupportedExtension( const char* ext )
-{
-	if( !ext )
+bool imageLoader::IsSupportedExtension(const char* ext) {
+	if (!ext)
 		return false;
 
 	uint32_t extCount = 0;
 
-	while(true)
-	{
-		if( !SupportedExtensions[extCount] )
+	while (true) {
+		if (!SupportedExtensions[extCount])
 			break;
 
-		if( strcasecmp(SupportedExtensions[extCount], ext) == 0 )
+		if (strcasecmp(SupportedExtensions[extCount], ext) == 0)
 			return true;
 
 		extCount++;
@@ -57,10 +66,8 @@ bool imageLoader::IsSupportedExtension( const char* ext )
 	return false;
 }
 
-
 // constructor
-imageLoader::imageLoader( const videoOptions& options ) : videoSource(options)
-{
+imageLoader::imageLoader(const videoOptions& options) : videoSource(options) {
 	mEOS = false;
 	mNextFile = 0;
 
@@ -69,51 +76,48 @@ imageLoader::imageLoader( const videoOptions& options ) : videoSource(options)
 	// list files to use
 	std::vector<std::string> files;
 
-	if( !listDir(options.resource.location, files, FILE_REGULAR) )
-	{
-		LogError(LOG_IMAGE "imageLoader -- failed to find '%s'\n", options.resource.location.c_str());
+	if (!listDir(options.resource.location, files, FILE_REGULAR)) {
+		LogError(
+		    LOG_IMAGE "imageLoader -- failed to find '%s'\n",
+		    options.resource.location.c_str()
+		);
 		return;
 	}
 
 	// check extensions for image types
 	const size_t numFiles = files.size();
 
-	for( size_t n=0; n < numFiles; n++ )
-	{
-		if( fileHasExtension(files[n], SupportedExtensions) )
-		{
+	for (size_t n = 0; n < numFiles; n++) {
+		if (fileHasExtension(files[n], SupportedExtensions)) {
 			LogDebug(LOG_IMAGE "imageLoader -- found file %s\n", files[n].c_str());
 			mFiles.push_back(files[n]);
 		}
-	} 
+	}
 
-	if( mFiles.size() == 0 )
-	{
-		LogError(LOG_IMAGE "imageLoader -- failed to find any image files under '%s'\n", options.resource.location.c_str());
+	if (mFiles.size() == 0) {
+		LogError(
+		    LOG_IMAGE "imageLoader -- failed to find any image files under '%s'\n",
+		    options.resource.location.c_str()
+		);
 		return;
 	}
 }
 
-
 // destructor
-imageLoader::~imageLoader()
-{
+imageLoader::~imageLoader() {
 	const size_t numBuffers = mBuffers.size();
 
-	for( size_t n=0; n < numBuffers; n++ )
+	for (size_t n = 0; n < numBuffers; n++)
 		CUDA(cudaFreeHost(mBuffers[n]));
 
 	mBuffers.clear();
 }
 
-
 // Create
-imageLoader* imageLoader::Create( const videoOptions& options )
-{
+imageLoader* imageLoader::Create(const videoOptions& options) {
 	imageLoader* loader = new imageLoader(options);
 
-	if( loader->mFiles.size() == 0 )
-	{
+	if (loader->mFiles.size() == 0) {
 		delete loader;
 		return NULL;
 	}
@@ -121,36 +125,41 @@ imageLoader* imageLoader::Create( const videoOptions& options )
 	return loader;
 }
 
-
 // Create
-imageLoader* imageLoader::Create( const char* resource, const videoOptions& options )
-{
+imageLoader* imageLoader::Create(const char* resource, const videoOptions& options) {
 	videoOptions opt = options;
 	opt.resource = resource;
 	return Create(opt);
 }
 
-
-#define RETURN_STATUS(code)  { if( status != NULL ) { *status=(code); } return ((code) == videoSource::OK ? true : false); }
-
+#define RETURN_STATUS(code)                                                                        \
+	{                                                                                              \
+		if (status != NULL) {                                                                      \
+			*status = (code);                                                                      \
+		}                                                                                          \
+		return ((code) == videoSource::OK ? true : false);                                         \
+	}
 
 // Capture
-bool imageLoader::Capture( void** output, imageFormat format, uint64_t timeout, int* status, cudaStream_t stream )
-{
+bool imageLoader::Capture(
+    void** output,
+    imageFormat format,
+    uint64_t timeout,
+    int* status,
+    cudaStream_t stream
+) {
 	// verify the output pointer exists
-	if( !output )
+	if (!output)
 		RETURN_STATUS(ERROR);
 
 	// confirm the stream is open
-	if( !mStreaming )
-	{
-		if( !Open() )
+	if (!mStreaming) {
+		if (!Open())
 			RETURN_STATUS(EOS);
 	}
 
 	// reclaim old buffers
-	if( mBuffers.size() >= mOptions.numBuffers )
-	{
+	if (mBuffers.size() >= mOptions.numBuffers) {
 		CUDA(cudaFreeHost(mBuffers[0]));
 		mBuffers.erase(mBuffers.begin());
 	}
@@ -158,28 +167,23 @@ bool imageLoader::Capture( void** output, imageFormat format, uint64_t timeout, 
 	// get the next file to load
 	const size_t currFile = mNextFile;
 	mNextFile++;
-	
-	if( mNextFile >= mFiles.size() )
-	{
-		if( isLooping() )
-		{
+
+	if (mNextFile >= mFiles.size()) {
+		if (isLooping()) {
 			mNextFile = 0;
 			mLoopCount++;
-		}
-		else
-		{
+		} else {
 			mEOS = true;
 			mStreaming = false;
 		}
 	}
 
 	// load the next image
-	void* imgPtr  = NULL;
-	int imgWidth  = 0;
+	void* imgPtr = NULL;
+	int imgWidth = 0;
 	int imgHeight = 0;
 
-	if( !loadImage(mFiles[currFile].c_str(), &imgPtr, &imgWidth, &imgHeight, format) )
-	{
+	if (!loadImage(mFiles[currFile].c_str(), &imgPtr, &imgWidth, &imgHeight, format)) {
 		LogError(LOG_IMAGE "imageLoader -- failed to load '%s'\n", mFiles[currFile].c_str());
 		return Capture(output, format, timeout, status, stream);
 	}
@@ -194,13 +198,13 @@ bool imageLoader::Capture( void** output, imageFormat format, uint64_t timeout, 
 	RETURN_STATUS(OK);
 }
 
-
 // Open
-bool imageLoader::Open()
-{
-	if( mEOS )
-	{
-		LogWarning(LOG_IMAGE "imageLoader -- End of Stream (EOS) has been reached, stream has been closed\n");
+bool imageLoader::Open() {
+	if (mEOS) {
+		LogWarning(
+		    LOG_IMAGE
+		    "imageLoader -- End of Stream (EOS) has been reached, stream has been closed\n"
+		);
 		return false;
 	}
 
@@ -208,11 +212,7 @@ bool imageLoader::Open()
 	return true;
 }
 
-
 // Close
-void imageLoader::Close()
-{
+void imageLoader::Close() {
 	mStreaming = false;
 }
-
-

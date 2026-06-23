@@ -19,82 +19,79 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
- 
+
 #ifndef __RTSP_SERVER_H__
 #define __RTSP_SERVER_H__
 
 #include <stdint.h>
 
+	// forward declarations
+	class Thread;
 
-// forward declarations
-class Thread;
+	struct _GMainLoop;
+	struct _GstRTSPServer;
+	struct _GstElement;
 
-struct _GMainLoop;
-struct _GstRTSPServer;
-struct _GstElement;
-
-
-/**
- * Default port used by RTSP server.
- * @ingroup network
- */
+	/**
+	 * Default port used by RTSP server.
+	 * @ingroup network
+	 */
 #define RTSP_DEFAULT_PORT 8554
 
-/**
- * RTSP logging prefix
- * @ingroup network
- */
+	/**
+	 * RTSP logging prefix
+	 * @ingroup network
+	 */
 #define LOG_RTSP "[rtsp]   "
 
+	/**
+	 * RTSP server for transmitting encoded GStreamer pipelines to client devices.
+	 * This is integrated into videoOutput/gstEncoder, but can be used standalone (@see rtsp-server
+	 * example)
+	 * @ingroup network
+	 */
+	class RTSPServer {
+	public:
+		/**
+		 * Create a RTSP server on this port.
+		 * If this port is already in use, the existing server instance will be returned.
+		 */
+		static RTSPServer* Create(uint16_t port = RTSP_DEFAULT_PORT);
 
-/**
- * RTSP server for transmitting encoded GStreamer pipelines to client devices.
- * This is integrated into videoOutput/gstEncoder, but can be used standalone (@see rtsp-server example)
- * @ingroup network
- */
-class RTSPServer
-{
-public:
-	/**
-	 * Create a RTSP server on this port.
-	 * If this port is already in use, the existing server instance will be returned.
-	 */
-	static RTSPServer* Create( uint16_t port=RTSP_DEFAULT_PORT );
-	
-	/**
-	 * Release a reference to the server instance.
-	 * Server will be shut down when the reference count reaches zero.
-	 */
-	void Release();
-	
-	/**
-	 * Register a GStreamer pipeline to be served at the specified path.
-	 * It will be able to be viewed from clients at `rtsp://hostname:port/path`
-	 */
-	bool AddRoute( const char* path, _GstElement* pipeline );
-	
-	/**
-	 * Create a GStreamer pipeline and register it to be served at the specified path.
-	 * It will be able to be viewed from clients at `rtsp://hostname:port/path`
-	 */
-	bool AddRoute( const char* path, const char* pipeline );
-	
-protected:
-	RTSPServer( uint16_t port );
-	~RTSPServer();
-	
-	bool init();
-	
-	static void* runThread( void* user_data );
-	
-	uint16_t mPort;
-	uint32_t mRefCount;
-	
-	Thread* mThread;
-	bool    mRunning;
-	
-	_GMainLoop* mMainLoop;
-	_GstRTSPServer* mServer;
-};
+		/**
+		 * Release a reference to the server instance.
+		 * Server will be shut down when the reference count reaches zero.
+		 */
+		void Release();
+
+		/**
+		 * Register a GStreamer pipeline to be served at the specified path.
+		 * It will be able to be viewed from clients at `rtsp://hostname:port/path`
+		 */
+		bool AddRoute(const char* path, _GstElement* pipeline);
+
+		/**
+		 * Create a GStreamer pipeline and register it to be served at the specified path.
+		 * It will be able to be viewed from clients at `rtsp://hostname:port/path`
+		 */
+		bool AddRoute(const char* path, const char* pipeline);
+
+	protected:
+		RTSPServer(uint16_t port);
+		~RTSPServer();
+
+		bool init();
+
+		static void* runThread(void* user_data);
+
+		uint16_t mPort;
+		uint32_t mRefCount;
+
+		Thread* mThread;
+		bool mRunning;
+
+		_GMainLoop* mMainLoop;
+		_GstRTSPServer* mServer;
+	};
 
 #endif

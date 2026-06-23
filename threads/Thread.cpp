@@ -19,7 +19,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
- 
+
 #include "Thread.h"
 
 #include <unistd.h>
@@ -30,34 +30,26 @@
 
 #include "logging.h"
 
-
 // constructor
-Thread::Thread()
-{
+Thread::Thread() {
 	mThreadStarted = false;
 }
 
-
 // destructor
-Thread::~Thread()
-{
+Thread::~Thread() {
 	Stop();
 }
 
-
 // Run
-void Thread::Run()
-{
+void Thread::Run() {
 	LogError("default Thread::Run() -- please implement your own Run() function\n");
 }
 
-
 // DefaultEntry
-void* Thread::DefaultEntry( void* param )
-{
+void* Thread::DefaultEntry(void* param) {
 	// the Thread object is contained in the param
 	Thread* thread = (Thread*)param;
-	
+
 	// call the virtual Run() function
 	thread->Run();
 
@@ -66,28 +58,22 @@ void* Thread::DefaultEntry( void* param )
 	return 0;
 }
 
-
 // Start
-bool Thread::Start()
-{
+bool Thread::Start() {
 	return Start(&Thread::DefaultEntry, this);
 }
 
-
 // Start
-bool Thread::Start( ThreadEntryFunction entry, void* user_param )
-{
+bool Thread::Start(ThreadEntryFunction entry, void* user_param) {
 	// make sure this thread object hasn't already been started
-	if( mThreadStarted )
-	{
+	if (mThreadStarted) {
 		LogError("thread already initialized\n");
 		return false;
 	}
 
 	// pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN + THREAD_STACK_SIZE);
 
-	if( pthread_create(&mThreadID, NULL, entry, user_param) != 0 )
-	{
+	if (pthread_create(&mThreadID, NULL, entry, user_param) != 0) {
 		LogError("thread failed to initialize\n");
 		return false;
 	}
@@ -96,40 +82,32 @@ bool Thread::Start( ThreadEntryFunction entry, void* user_param )
 	return true;
 }
 
-
 // Stop
-void Thread::Stop( bool wait )
-{
-	if( !mThreadStarted )
+void Thread::Stop(bool wait) {
+	if (!mThreadStarted)
 		return;
-	
-	if( wait )
+
+	if (wait)
 		pthread_join(mThreadID, NULL);
-	
+
 	mThreadStarted = false;
 }
 
-	
 // GetMaxPriorityLevel
-int Thread::GetMaxPriority()
-{
+int Thread::GetMaxPriority() {
 	return sched_get_priority_max(SCHED_FIFO);
 }
 
-
 // GetMinPriorityLevel
-int Thread::GetMinPriority()
-{
+int Thread::GetMinPriority() {
 	return sched_get_priority_min(SCHED_FIFO);
 }
 
-
 // GetPriority
-int Thread::GetPriority( pthread_t* thread_ptr )
-{
+int Thread::GetPriority(pthread_t* thread_ptr) {
 	pthread_t thread;
 
-	if( !thread_ptr )
+	if (!thread_ptr)
 		thread = pthread_self();
 	else
 		thread = *thread_ptr;
@@ -137,8 +115,7 @@ int Thread::GetPriority( pthread_t* thread_ptr )
 	struct sched_param schedp;
 	int policy = SCHED_FIFO;
 
-	if( pthread_getschedparam(thread, &policy, &schedp) != 0 )
-	{
+	if (pthread_getschedparam(thread, &policy, &schedp) != 0) {
 		printf("Thread::GetPriority() - failed to retrieve thread's priority level\n");
 		return 0;
 	}
@@ -146,13 +123,11 @@ int Thread::GetPriority( pthread_t* thread_ptr )
 	return schedp.sched_priority;
 }
 
-
 // SetPriority
-int Thread::SetPriority( int priority, pthread_t* thread_ptr )
-{
+int Thread::SetPriority(int priority, pthread_t* thread_ptr) {
 	pthread_t thread;
 
-	if( !thread_ptr )
+	if (!thread_ptr)
 		thread = pthread_self();
 	else
 		thread = *thread_ptr;
@@ -160,40 +135,42 @@ int Thread::SetPriority( int priority, pthread_t* thread_ptr )
 	struct sched_param schedp;
 	schedp.sched_priority = priority;
 
-	const int result = pthread_setschedparam(thread, SCHED_FIFO, &schedp); //pthread_setschedprio(thread, priority);//
+	const int result = pthread_setschedparam(
+	    thread,
+	    SCHED_FIFO,
+	    &schedp
+	);  // pthread_setschedprio(thread, priority);//
 
-	if( result != 0 )
-	{
-		printf("Thread::SetPriority() - failed to set thread's priority level to %i (error=%i %s)\n", priority, result, strerror(result));
+	if (result != 0) {
+		printf(
+		    "Thread::SetPriority() - failed to set thread's priority level to %i (error=%i %s)\n",
+		    priority,
+		    result,
+		    strerror(result)
+		);
 		return false;
 	}
 
 	return true;
 }
 
-
 // GetPriorityLevel
-int Thread::GetPriorityLevel()
-{
+int Thread::GetPriorityLevel() {
 	return Thread::GetPriority(GetThreadID());
 }
 
-
 // SetPriorityLevel
-bool Thread::SetPriorityLevel( int priority )
-{
+bool Thread::SetPriorityLevel(int priority) {
 	return Thread::SetPriority(priority, GetThreadID());
 }
 
-
 static int THREAD_STACK_SIZE = 200 * 1024;
-static int PREALLOC_SIZE     = 200 * 1024 * 1024;
+static int PREALLOC_SIZE = 200 * 1024 * 1024;
 
 // InitRealtime
-void Thread::InitRealtime()
-{
+void Thread::InitRealtime() {
 	// disable paging for the current process
-	mlockall(MCL_CURRENT | MCL_FUTURE);				// forgetting munlockall() when done!
+	mlockall(MCL_CURRENT | MCL_FUTURE);  // forgetting munlockall() when done!
 
 	// turn off malloc trimming.
 	mallopt(M_TRIM_THRESHOLD, -1);
@@ -202,17 +179,16 @@ void Thread::InitRealtime()
 	mallopt(M_MMAP_MAX, 0);
 
 	unsigned int page_size = sysconf(_SC_PAGESIZE);
-	unsigned char * buffer = (unsigned char *)malloc(PREALLOC_SIZE);
+	unsigned char* buffer = (unsigned char*)malloc(PREALLOC_SIZE);
 
 	// touch each page in this piece of memory to get it mapped into RAM
-	for(int i = 0; i < PREALLOC_SIZE; i += page_size)
-	{
+	for (int i = 0; i < PREALLOC_SIZE; i += page_size) {
 		// each write to this buffer will generate a pagefault.
 		// once the pagefault is handled a page will be locked in memory and never
 		// given back to the system.
 		buffer[i] = 0;
 	}
-		
+
 	// release the buffer. As glibc is configured such that it never gives back memory to
 	// the kernel, the memory allocated above is locked for this process. All malloc() and new()
 	// calls come from the memory pool reserved and locked above. Issuing free() and delete()
@@ -221,39 +197,32 @@ void Thread::InitRealtime()
 	free(buffer);
 }
 
-
 // Yield
-void Thread::Yield( unsigned int ms )
-{
+void Thread::Yield(unsigned int ms) {
 	sleep(ms);
 }
 
-
 // LockAffinity
-bool Thread::LockAffinity( unsigned int cpuID )
-{
-	return Thread::SetAffinity( cpuID, GetThreadID() );
+bool Thread::LockAffinity(unsigned int cpuID) {
+	return Thread::SetAffinity(cpuID, GetThreadID());
 }
 
-
 // SetAffinity
-bool Thread::SetAffinity( unsigned int cpuID, pthread_t* thread_ptr )
-{
+bool Thread::SetAffinity(unsigned int cpuID, pthread_t* thread_ptr) {
 	pthread_t thread;
 	cpu_set_t cpu_set;
 
 	CPU_ZERO(&cpu_set);
 	CPU_SET(cpuID, &cpu_set);
 
-	if( !thread_ptr )
+	if (!thread_ptr)
 		thread = pthread_self();
 	else
 		thread = *thread_ptr;
 
 	const int result_set_cpu = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpu_set);
 
-	if( result_set_cpu != 0 )
-	{
+	if (result_set_cpu != 0) {
 		printf("pthread_setaffinity_np() failed (error=%i)\n", result_set_cpu);
 		return false;
 	}
@@ -262,8 +231,8 @@ bool Thread::SetAffinity( unsigned int cpuID, pthread_t* thread_ptr )
 
 	if( result_get_cpu != 0 )
 	{
-		printf("pthread_getaffinity_np() failed (error=%i)\n", result_get_cpu);
-		return false;
+	    printf("pthread_getaffinity_np() failed (error=%i)\n", result_get_cpu);
+	    return false;
 	}
 
 	const int cpu_set_count = CPU_COUNT(&cpu_set);
@@ -272,11 +241,7 @@ bool Thread::SetAffinity( unsigned int cpuID, pthread_t* thread_ptr )
 	return true;
 }
 
-
 // GetCPU
-int Thread::GetCPU()
-{
+int Thread::GetCPU() {
 	return sched_getcpu();
 }
-
-

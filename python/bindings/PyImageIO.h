@@ -19,18 +19,16 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
- 
+
 #ifndef __PYTHON_BINDINGS_IMAGE_IO__
 #define __PYTHON_BINDINGS_IMAGE_IO__
 
 #include "PyUtils.h"
 
+	// Register functions
+	PyMethodDef* PyImageIO_RegisterFunctions();
 
-// Register functions
-PyMethodDef* PyImageIO_RegisterFunctions();
-
-// Register types
-bool PyImageIO_RegisterTypes( PyObject* module );
-
+	// Register types
+	bool PyImageIO_RegisterTypes(PyObject* module);
 
 #endif

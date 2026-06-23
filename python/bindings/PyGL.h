@@ -19,18 +19,16 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
- 
+
 #ifndef __PYTHON_BINDINGS_OPENGL__
 #define __PYTHON_BINDINGS_OPENGL__
 
 #include "PyUtils.h"
 
+	// Register functions
+	PyMethodDef* PyGL_RegisterFunctions();
 
-// Register functions
-PyMethodDef* PyGL_RegisterFunctions();
-
-// Register types
-bool PyGL_RegisterTypes( PyObject* module );
-
+	// Register types
+	bool PyGL_RegisterTypes(PyObject* module);
 
 #endif

@@ -32,48 +32,44 @@
 
 #include "logging.h"
 
-
 const uint32_t pyUtilsMaxFunctions = 128;
-      uint32_t pyUtilsNumFunctions = 0;
+uint32_t pyUtilsNumFunctions = 0;
 
 static PyMethodDef pyUtilsFunctions[pyUtilsMaxFunctions];
 
-
 // add functions
-void PyUtils_AddFunctions( PyMethodDef* functions )
-{
+void PyUtils_AddFunctions(PyMethodDef* functions) {
 	uint32_t count = 0;
-		
-	if( !functions )
+
+	if (!functions)
 		return;
-	
-	while(true)
-	{
-		if( !functions[count].ml_name || !functions[count].ml_meth )
+
+	while (true) {
+		if (!functions[count].ml_name || !functions[count].ml_meth)
 			break;
-		
-		if( pyUtilsNumFunctions >= pyUtilsMaxFunctions - 1 )
-		{
-			LogError(LOG_PY_UTILS "exceeded max number of functions to register (%u)\n", pyUtilsMaxFunctions);
+
+		if (pyUtilsNumFunctions >= pyUtilsMaxFunctions - 1) {
+			LogError(
+			    LOG_PY_UTILS "exceeded max number of functions to register (%u)\n",
+			    pyUtilsMaxFunctions
+			);
 			return;
 		}
-		
+
 		memcpy(pyUtilsFunctions + pyUtilsNumFunctions, functions + count, sizeof(PyMethodDef));
-		
+
 		pyUtilsNumFunctions++;
 		count++;
 	}
 }
 
-
 // register functions
-bool PyUtils_RegisterFunctions()
-{
+bool PyUtils_RegisterFunctions() {
 	LogDebug(LOG_PY_UTILS "registering module functions...\n");
-	
+
 	// zero the master list of functions, so it end with NULL sentinel
 	memset(pyUtilsFunctions, 0, sizeof(PyMethodDef) * pyUtilsMaxFunctions);
-	
+
 	// add functions to the master list
 	PyUtils_AddFunctions(PyGL_RegisterFunctions());
 	PyUtils_AddFunctions(PyCUDA_RegisterFunctions());
@@ -82,102 +78,103 @@ bool PyUtils_RegisterFunctions()
 	PyUtils_AddFunctions(PyImageIO_RegisterFunctions());
 	PyUtils_AddFunctions(PyNumpy_RegisterFunctions());
 	PyUtils_AddFunctions(PyLogging_RegisterFunctions());
-	
+
 	LogDebug(LOG_PY_UTILS "done registering module functions\n");
 	return true;
 }
 
-
 // register object types
-bool PyUtils_RegisterTypes( PyObject* module )
-{
+bool PyUtils_RegisterTypes(PyObject* module) {
 	LogDebug(LOG_PY_UTILS "registering module types...\n");
-	
-	if( !PyGL_RegisterTypes(module) )
+
+	if (!PyGL_RegisterTypes(module))
 		LogError(LOG_PY_UTILS "failed to register OpenGL types\n");
 
-	if( !PyCUDA_RegisterTypes(module) )
+	if (!PyCUDA_RegisterTypes(module))
 		LogError(LOG_PY_UTILS "failed to register CUDA types\n");
 
-	if( !PyVideo_RegisterTypes(module) )
+	if (!PyVideo_RegisterTypes(module))
 		LogError(LOG_PY_UTILS "failed to register Video types\n");
 
-	if( !PyCamera_RegisterTypes(module) )
+	if (!PyCamera_RegisterTypes(module))
 		LogError(LOG_PY_UTILS "failed to register Camera types\n");
 
-	if( !PyImageIO_RegisterTypes(module) )
+	if (!PyImageIO_RegisterTypes(module))
 		LogError(LOG_PY_UTILS "failed to register ImageIO types\n");
 
-	if( !PyNumpy_RegisterTypes(module) )
+	if (!PyNumpy_RegisterTypes(module))
 		LogError(LOG_PY_UTILS "failed to register NumPy types\n");
 
-	if( !PyLogging_RegisterTypes(module) )
+	if (!PyLogging_RegisterTypes(module))
 		LogError(LOG_PY_UTILS "failed to register Logging types\n");
-	
+
 	LogDebug(LOG_PY_UTILS "done registering module types\n");
 	return true;
 }
 
 #ifdef PYTHON_3
-static struct PyModuleDef pyUtilsModuleDef = {
-        PyModuleDef_HEAD_INIT,
-        "jetson_utils_python",
-        NULL,
-        -1,
-        pyUtilsFunctions
-};
+	static struct PyModuleDef pyUtilsModuleDef =
+	    {PyModuleDef_HEAD_INIT, "jetson_utils_python", NULL, -1, pyUtilsFunctions};
 
-PyMODINIT_FUNC
-PyInit_jetson_utils_python(void)
-{
-	LogDebug(LOG_PY_UTILS "initializing Python %i.%i bindings...\n", PY_MAJOR_VERSION, PY_MINOR_VERSION);
-	
-	// register functions
-	if( !PyUtils_RegisterFunctions() )
-		LogError(LOG_PY_UTILS "failed to register module functions\n");
-	
-	// create the module
-	PyObject* module = PyModule_Create(&pyUtilsModuleDef);
-	
-	if( !module )
-	{
-		LogError(LOG_PY_UTILS "PyModule_Create() failed\n");
-		return NULL;
+	PyMODINIT_FUNC PyInit_jetson_utils_python(void) {
+		LogDebug(
+		    LOG_PY_UTILS "initializing Python %i.%i bindings...\n",
+		    PY_MAJOR_VERSION,
+		    PY_MINOR_VERSION
+		);
+
+		// register functions
+		if (!PyUtils_RegisterFunctions())
+			LogError(LOG_PY_UTILS "failed to register module functions\n");
+
+		// create the module
+		PyObject* module = PyModule_Create(&pyUtilsModuleDef);
+
+		if (!module) {
+			LogError(LOG_PY_UTILS "PyModule_Create() failed\n");
+			return NULL;
+		}
+
+		// register types
+		if (!PyUtils_RegisterTypes(module))
+			LogError(LOG_PY_UTILS "failed to register module types\n");
+
+		LogDebug(
+		    LOG_PY_UTILS "done Python %i.%i binding initialization\n",
+		    PY_MAJOR_VERSION,
+		    PY_MINOR_VERSION
+		);
+		return module;
 	}
-	
-	// register types
-	if( !PyUtils_RegisterTypes(module) )
-		LogError(LOG_PY_UTILS "failed to register module types\n");
-	
-	LogDebug(LOG_PY_UTILS "done Python %i.%i binding initialization\n", PY_MAJOR_VERSION, PY_MINOR_VERSION);
-	return module;
-}
 
 #else
-PyMODINIT_FUNC
-initjetson_utils_python(void)
-{
-	LogDebug(LOG_PY_UTILS "initializing Python %i.%i bindings...\n", PY_MAJOR_VERSION, PY_MINOR_VERSION);
-	
-	// register functions
-	if( !PyUtils_RegisterFunctions() )
-		LogError(LOG_PY_UTILS "failed to register module functions\n");
-	
-	// create the module
-	PyObject* module = Py_InitModule("jetson_utils_python", pyUtilsFunctions);
-	
-	if( !module )
-	{
-		LogError(LOG_PY_UTILS "Py_InitModule() failed\n");
-		return;
+	PyMODINIT_FUNC initjetson_utils_python(void) {
+		LogDebug(
+		    LOG_PY_UTILS "initializing Python %i.%i bindings...\n",
+		    PY_MAJOR_VERSION,
+		    PY_MINOR_VERSION
+		);
+
+		// register functions
+		if (!PyUtils_RegisterFunctions())
+			LogError(LOG_PY_UTILS "failed to register module functions\n");
+
+		// create the module
+		PyObject* module = Py_InitModule("jetson_utils_python", pyUtilsFunctions);
+
+		if (!module) {
+			LogError(LOG_PY_UTILS "Py_InitModule() failed\n");
+			return;
+		}
+
+		// register types
+		if (!PyUtils_RegisterTypes(module))
+			LogError(LOG_PY_UTILS "failed to register module types\n");
+
+		LogDebug(
+		    LOG_PY_UTILS "done Python %i.%i binding initialization\n",
+		    PY_MAJOR_VERSION,
+		    PY_MINOR_VERSION
+		);
 	}
-	
-	// register types
-	if( !PyUtils_RegisterTypes(module) )
-		LogError(LOG_PY_UTILS "failed to register module types\n");
-	
-	LogDebug(LOG_PY_UTILS "done Python %i.%i binding initialization\n", PY_MAJOR_VERSION, PY_MINOR_VERSION);
-}
 #endif
-
-

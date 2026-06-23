@@ -29,49 +29,38 @@
 
 #include "logging.h"
 
-
 // constructor
-KeyboardDevice::KeyboardDevice()
-{
+KeyboardDevice::KeyboardDevice() {
 	mFD = -1;
 
 	memset(mKeyMap, 0, sizeof(mKeyMap));
 }
 
-
 // destructor
-KeyboardDevice::~KeyboardDevice()
-{
-
-}
-
+KeyboardDevice::~KeyboardDevice() {}
 
 // Create
-KeyboardDevice* KeyboardDevice::Create( const char* path )
-{
-	if( !path )
+KeyboardDevice* KeyboardDevice::Create(const char* path) {
+	if (!path)
 		return NULL;
 
 	const int fd = open(path, O_RDONLY);
 
-	if( fd == -1 )
-	{
+	if (fd == -1) {
 		LogError("keyboard -- failed to open %s\n", path);
 		return NULL;
 	}
 
 	KeyboardDevice* kbd = new KeyboardDevice();
 
-	kbd->mFD   = fd;
+	kbd->mFD = fd;
 	kbd->mPath = path;
 
 	return kbd;
 }
 
-
 // Poll
-bool KeyboardDevice::Poll( uint32_t timeout )
-{
+bool KeyboardDevice::Poll(uint32_t timeout) {
 	const uint32_t max_ev = 64;
 	struct input_event ev[max_ev];
 
@@ -80,44 +69,43 @@ bool KeyboardDevice::Poll( uint32_t timeout )
 	FD_SET(mFD, &fds);
 
 	struct timeval tv;
- 
-	tv.tv_sec  = 0;
-	tv.tv_usec = timeout*1000;
+
+	tv.tv_sec = 0;
+	tv.tv_usec = timeout * 1000;
 
 	const int result = select(mFD + 1, &fds, NULL, NULL, &tv);
 
-	if( result == -1 ) 
-	{
+	if (result == -1) {
 		LogError("keyboard -- select() failed (errno=%i) (%s)\n", errno, strerror(errno));
 		return false;
-	}
-	else if( result == 0 )
-	{
-		if( /*mDebug &&*/ timeout > 0 )
+	} else if (result == 0) {
+		if (/*mDebug &&*/ timeout > 0)
 			LogDebug("keyboard -- select() timed out...\n");
 
-		return false;	// timeout, not necessarily an error (TRY_AGAIN)
+		return false;  // timeout, not necessarily an error (TRY_AGAIN)
 	}
 
 	const int bytesRead = read(mFD, ev, sizeof(struct input_event) * max_ev);
 
-	if( bytesRead < (int)sizeof(struct input_event) ) 
-	{
-		LogError("keyboard -- read() expected %d bytes, got %d\n", (int)sizeof(struct input_event), bytesRead);
+	if (bytesRead < (int)sizeof(struct input_event)) {
+		LogError(
+		    "keyboard -- read() expected %d bytes, got %d\n",
+		    (int)sizeof(struct input_event),
+		    bytesRead
+		);
 		return false;
 	}
 
 	const int num_ev = bytesRead / sizeof(struct input_event);
 
-	for( int i = 0; i < num_ev; i++ ) 
-	{
-		if( ev[i].type != EV_KEY )
+	for (int i = 0; i < num_ev; i++) {
+		if (ev[i].type != EV_KEY)
 			continue;
 
-		if( ev[i].value < 0 || ev[i].value > 2 )
+		if (ev[i].value < 0 || ev[i].value > 2)
 			continue;
 
-		if( ev[i].code >= MAX_KEYS )
+		if (ev[i].code >= MAX_KEYS)
 			continue;
 
 		mKeyMap[ev[i].code] = (ev[i].value == 0) ? false : true;
@@ -125,17 +113,13 @@ bool KeyboardDevice::Poll( uint32_t timeout )
 		LogDebug("keyboard -- code %02u  value %i\n", ev[i].code, ev[i].value);
 	}
 
-	return true;	
+	return true;
 }
 
-
 // KeyDown
-bool KeyboardDevice::KeyDown( uint32_t code ) const
-{
-	if( code >= MAX_KEYS )
+bool KeyboardDevice::KeyDown(uint32_t code) const {
+	if (code >= MAX_KEYS)
 		return false;
 
 	return mKeyMap[code];
 }
-
-

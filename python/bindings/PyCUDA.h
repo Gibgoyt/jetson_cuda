@@ -19,84 +19,114 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
- 
+
 #ifndef __PYTHON_BINDINGS_CUDA__
 #define __PYTHON_BINDINGS_CUDA__
 
 #include "PyUtils.h"
 #include "imageFormat.h"
 
-// PyCudaMemory object
-typedef struct {
-	PyObject_HEAD
-	void* ptr;
-	size_t size;
-	bool mapped;
-	bool freeOnDelete;
-	cudaStream_t stream;
-	cudaEvent_t event;
-} PyCudaMemory;
+	// PyCudaMemory object
+	typedef struct {
+		PyObject_HEAD void* ptr;
+		size_t size;
+		bool mapped;
+		bool freeOnDelete;
+		cudaStream_t stream;
+		cudaEvent_t event;
+	} PyCudaMemory;
 
-// PyCudaImage object
-typedef struct {
-	PyCudaMemory base;
-	imageFormat format;
-	uint64_t    timestamp;
-	uint32_t    width;
-	uint32_t    height;
-	Py_ssize_t  shape[3];
-	Py_ssize_t  strides[3];
-	PyObject*   cudaArrayInterfaceDict;  // https://numba.readthedocs.io/en/stable/cuda/cuda_array_interface.html
-} PyCudaImage;
+	// PyCudaImage object
+	typedef struct {
+		PyCudaMemory base;
+		imageFormat format;
+		uint64_t timestamp;
+		uint32_t width;
+		uint32_t height;
+		Py_ssize_t shape[3];
+		Py_ssize_t strides[3];
+		PyObject*
+		    cudaArrayInterfaceDict;  // https://numba.readthedocs.io/en/stable/cuda/cuda_array_interface.html
+	} PyCudaImage;
 
-// Create memory objects
-PyObject* PyCUDA_RegisterMemory( void* ptr, size_t size, bool mapped=false, bool freeOnDelete=true );
-//PyObject* PyCUDA_RegisterMappedMemory( void* ptr, size_t size, bool freeOnDelete=true );
+	// Create memory objects
+	PyObject*
+	PyCUDA_RegisterMemory(void* ptr, size_t size, bool mapped = false, bool freeOnDelete = true);
+	// PyObject* PyCUDA_RegisterMappedMemory( void* ptr, size_t size, bool freeOnDelete=true );
 
-// Create image objects
-PyObject* PyCUDA_RegisterImage( void* ptr, uint32_t width, uint32_t height, imageFormat format, uint64_t timestamp=0, bool mapped=false, bool freeOnDelete=true );
-//PyObject* PyCUDA_RegisterMappedImage( void* ptr, uint32_t width, uint32_t height, imageFormat format, bool freeOnDelete=true );
+	// Create image objects
+	PyObject* PyCUDA_RegisterImage(
+	    void* ptr,
+	    uint32_t width,
+	    uint32_t height,
+	    imageFormat format,
+	    uint64_t timestamp = 0,
+	    bool mapped = false,
+	    bool freeOnDelete = true
+	);
+	// PyObject* PyCUDA_RegisterMappedImage( void* ptr, uint32_t width, uint32_t height, imageFormat
+	// format, bool freeOnDelete=true );
 
-// type checks
-bool PyCUDA_IsMemory( PyObject* object );
-bool PyCUDA_IsImage( PyObject* object );
+	// type checks
+	bool PyCUDA_IsMemory(PyObject* object);
+	bool PyCUDA_IsImage(PyObject* object);
 
-// cast operators
-PyCudaMemory* PyCUDA_GetMemory( PyObject* object );
-PyCudaImage* PyCUDA_GetImage( PyObject* object );
+	// cast operators
+	PyCudaMemory* PyCUDA_GetMemory(PyObject* object);
+	PyCudaImage* PyCUDA_GetImage(PyObject* object);
 
-// retrieve from capsule
-void* PyCUDA_GetImage( PyObject* object, int* width, int* height, imageFormat* format, uint64_t* timestamp=NULL );
+	// retrieve from capsule
+	void* PyCUDA_GetImage(
+	    PyObject* object,
+	    int* width,
+	    int* height,
+	    imageFormat* format,
+	    uint64_t* timestamp = NULL
+	);
 
-// Register functions
-PyMethodDef* PyCUDA_RegisterFunctions();
+	// Register functions
+	PyMethodDef* PyCUDA_RegisterFunctions();
 
-// Register types
-bool PyCUDA_RegisterTypes( PyObject* module );
+	// Register types
+	bool PyCUDA_RegisterTypes(PyObject* module);
 
+	// Exception handling
+#define PYCUDA_ASSERT(x) PYCUDA_CHECK(x, NULL)
+#define PYCUDA_ASSERT_NOGIL(x) PYCUDA_CHECK_NOGIL(x, NULL)
 
-// Exception handling
-#define PYCUDA_ASSERT(x)        PYCUDA_CHECK(x, NULL)
-#define PYCUDA_ASSERT_NOGIL(x)  PYCUDA_CHECK_NOGIL(x, NULL)
+#define PYCUDA_CHECK(x, return_on_error)                                                           \
+		{                                                                                              \
+			const cudaError_t _retval = cudaCheckError((x), #x, __FILE__, __LINE__);                   \
+			if (_retval != cudaSuccess) {                                                              \
+				PyErr_Format(                                                                          \
+				    PyExc_Exception,                                                                   \
+				    "CUDA error (%u) - %s\n  File \"%s\", line %i\n    %s",                            \
+				    _retval,                                                                           \
+				    cudaGetErrorString(_retval),                                                       \
+				    __FILE__,                                                                          \
+				    __LINE__,                                                                          \
+			    #x                                                                                 \
+				);                                                                                     \
+				return return_on_error;                                                                \
+			}                                                                                          \
+		}
 
-#define PYCUDA_CHECK(x, return_on_error) { \
-    const cudaError_t _retval = cudaCheckError((x), #x, __FILE__, __LINE__); \
-    if( _retval != cudaSuccess ) { \
-        PyErr_Format(PyExc_Exception, "CUDA error (%u) - %s\n  File \"%s\", line %i\n    %s", _retval, cudaGetErrorString(_retval), __FILE__, __LINE__, #x); \
-        return return_on_error; \
-    } \
-}
-
-#define PYCUDA_CHECK_NOGIL(x, return_on_error) { \
-    cudaError_t _retval = cudaSuccess; \
-    Py_BEGIN_ALLOW_THREADS \
-    _retval = cudaCheckError((x), #x, __FILE__, __LINE__); \
-    Py_END_ALLOW_THREADS \
-    if( _retval != cudaSuccess ) { \
-        PyErr_Format(PyExc_Exception, "CUDA error (%u) - %s\n  File \"%s\", line %i\n    %s", _retval, cudaGetErrorString(_retval), __FILE__, __LINE__, #x); \
-        return return_on_error; \
-    } \
-}
+#define PYCUDA_CHECK_NOGIL(x, return_on_error)                                                     \
+		{                                                                                              \
+			cudaError_t _retval = cudaSuccess;                                                         \
+			Py_BEGIN_ALLOW_THREADS _retval = cudaCheckError((x), #x, __FILE__, __LINE__);              \
+			Py_END_ALLOW_THREADS if (_retval != cudaSuccess) {                                         \
+				PyErr_Format(                                                                          \
+				    PyExc_Exception,                                                                   \
+				    "CUDA error (%u) - %s\n  File \"%s\", line %i\n    %s",                            \
+				    _retval,                                                                           \
+				    cudaGetErrorString(_retval),                                                       \
+				    __FILE__,                                                                          \
+				    __LINE__,                                                                          \
+			    #x                                                                                 \
+				);                                                                                     \
+				return return_on_error;                                                                \
+			}                                                                                          \
+		}
 
 #endif
-
