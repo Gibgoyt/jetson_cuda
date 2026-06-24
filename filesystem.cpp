@@ -18,7 +18,35 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
- */
+*/
+
+/*
+ *	filesystem.cpp  --  implementation of the path / file / dir helpers
+ *	===================================================================
+ *
+ *	See filesystem.h for the public API surface and the high-level
+ *	gotchas. This file is the small, mostly-self-contained collection
+ *	of implementations behind those declarations.
+ *
+ *	External dependencies:
+ *		<sys/stat.h>   -- stat(2) and the S_IS{REG,DIR,...} predicates
+ *		<glob.h>       -- POSIX glob(3), used by listDir
+ *		<fstream>      -- std::ifstream, used by readFile
+ *		alphanum.h     -- doj::alphanum_less, natural-order sort for listDir
+ *		Process.h      -- GetWorkingDir / GetExecutableDir (defined elsewhere
+ *		                  in utils/; wraps /proc/self/cwd and /proc/self/exe)
+ *		logging.h      -- LogError / LogWarning
+ *
+ *	Error-reporting convention:
+ *		- Path getters: empty string on failure.
+ *		- Size getters: 0 on failure (also valid for an empty file --
+ *		  callers can't always distinguish).
+ *		- Predicates:   false on failure.
+ *		- I/O entries (loadFile, listDir): log via LogError on the
+ *		  failure path BEFORE returning. readFile logs only an empty-
+ *		  file warning, not an open failure -- caller can't tell from
+ *		  the return value alone.
+*/
 
 #include "filesystem.h"
 #include "alphanum.h"
@@ -34,11 +62,25 @@
 
 #include "logging.h"
 
+
+//-----------------------------------------------------------------------------------
+// Path resolution
+//-----------------------------------------------------------------------------------
+
 // absolutePath
-std::string absolutePath(const std::string& relative_path) {
+//
+// Test the first byte: `/` is POSIX-absolute, `\` is Windows-absolute
+// (handled defensively for cross-platform input), `~` is a home-relative
+// path that the caller is expected to expand themselves (see NOTE).
+std::string absolutePath(
+    const std::string& relative_path
+) {
 	if (relative_path.size() != 0) {
 		const char first_char = relative_path[0];
 
+		// NOTE: `~` is treated as already-absolute and passed through
+		// unchanged. This function does NOT expand it -- callers that
+		// hand the result directly to fopen/stat will fail to resolve.
 		if (first_char == '/' || first_char == '\\' || first_char == '~')
 			return relative_path;
 	}
@@ -47,24 +89,45 @@ std::string absolutePath(const std::string& relative_path) {
 }
 
 // locateFile
-std::string locateFile(const std::string& path) {
+//
+// Thin convenience overload -- delegates to the (path, locations) form
+// with an empty seed vector. The built-in fallback locations are
+// appended inside the two-arg overload below.
+std::string locateFile(
+    const std::string& path
+) {
 	std::vector<std::string> locations;
 	return locateFile(path, locations);
 }
 
 // locateFile
-std::string locateFile(const std::string& path, std::vector<std::string>& locations) {
+//
+// In/out: callers can pre-populate `locations` to extend the search
+// set. On return the vector also contains the built-in fallbacks
+// appended below. Search stops at the first match.
+std::string locateFile(
+    const std::string& path,
+    std::vector<std::string>& locations
+) {
 	// check the given path first
 	if (fileExists(path.c_str()))
 		return path;
 
 	// add standard search locations
+	//
+	// Order matters: a path that exists in multiple locations resolves
+	// to the EARLIER one. The executable directory wins over /usr/local
+	// because dev builds typically run in-tree and find their own
+	// bundled assets before the system install.
 	locations.push_back(Process::GetExecutableDir());
 
 	locations.push_back("/usr/local/bin/");
 	locations.push_back("/usr/local/");
 	locations.push_back("/opt/");
 
+	// The two `images/` paths cover the bundled-test-images case --
+	// the library ships ~30 small JPEGs that examples reference by
+	// bare name (`peds-001.jpg` etc.).
 	locations.push_back("images/");
 	locations.push_back("/usr/local/bin/images/");
 
@@ -81,8 +144,25 @@ std::string locateFile(const std::string& path, std::vector<std::string>& locati
 	return "";
 }
 
+
+//-----------------------------------------------------------------------------------
+// Bulk file I/O
+//-----------------------------------------------------------------------------------
+
 // loadFile
-size_t loadFile(const std::string& path, void** bufferOut) {
+//
+// Stat-then-malloc-then-fread pattern. Returns the byte count on
+// success and 0 on any failure (allocation, open, short read).
+//
+// NOTE: if `bufferOut == NULL`, the malloc'd buffer is leaked AND
+//       the function still returns bytes_read. The NULL-check is in
+//       the wrong place -- the buffer should either be free()'d in
+//       that branch or the NULL-check should happen up front. Behaviour
+//       preserved here, called out so callers don't pass NULL.
+size_t loadFile(
+    const std::string& path,
+    void** bufferOut
+) {
 	// determine the file size
 	const size_t file_size = fileSize(path);
 
@@ -107,6 +187,10 @@ size_t loadFile(const std::string& path, void** bufferOut) {
 	}
 
 	// read the serialized engine into memory
+	//
+	// The comment in upstream calls this an "engine" because the
+	// dominant caller is tensorNet loading a serialized .engine file
+	// (see c/tensorNet.cpp). Generic enough to be used for any blob.
 	const size_t bytes_read = fread(buffer, 1, file_size, file);
 
 	if (bytes_read != file_size) {
@@ -117,6 +201,9 @@ size_t loadFile(const std::string& path, void** bufferOut) {
 
 	fclose(file);
 
+	// NOTE: if bufferOut == NULL we leak `buffer` here. The caller
+	// has no way to recover the data and no way to free it. Callers
+	// must pass a valid out-pointer.
 	if (bufferOut != NULL)
 		*bufferOut = buffer;
 
@@ -124,8 +211,17 @@ size_t loadFile(const std::string& path, void** bufferOut) {
 }
 
 // readFile
-std::string readFile(const std::string& path) {
-	// https://insanecoding.blogspot.com/2011/11/how-to-read-in-file-in-c.html
+//
+// Reference: https://insanecoding.blogspot.com/2011/11/how-to-read-in-file-in-c.html
+//
+// Idiomatic streambuf_iterator slurp. Binary mode means no newline
+// translation -- the returned string is a byte-for-byte copy of the
+// file. An empty file is NOT distinguishable from a missing file at
+// the return-value level (both return ""), only via the LogWarning
+// vs LogError split in the message stream.
+std::string readFile(
+    const std::string& path
+) {
 	std::ifstream in(path, std::ios::in | std::ios::binary);
 
 	if (!in) {
@@ -145,8 +241,35 @@ std::string readFile(const std::string& path) {
 	return contents;
 }
 
+
+//-----------------------------------------------------------------------------------
+// Directory enumeration
+//-----------------------------------------------------------------------------------
+
 // listDir
-bool listDir(const std::string& path_in, std::vector<std::string>& output, uint32_t mask) {
+//
+// Wraps POSIX glob(3) with two QoL behaviours:
+//   1. If `path_in` is a directory, append `/*` so the contents are
+//      listed instead of just the directory entry itself.
+//   2. On GLOB_NOMATCH for a path that doesn't start with a "rooted"
+//      character (`.`, `/`, `\`, `*`, `?`, `~`), retry once with the
+//      executable directory prepended -- this is how bundled
+//      images/ next to the binary just works.
+//
+// Glob flag rationale:
+//   GLOB_PERIOD       -- match leading `.` filenames
+//   GLOB_MARK         -- append `/` to directory matches
+//   GLOB_BRACE        -- expand `{jpg,png}` style alternations
+//   GLOB_TILDE_CHECK  -- expand `~`, error if it doesn't resolve
+//                        (rather than treating as a literal `~`)
+//
+// Output is filtered by `mask` (see fileTypes) and then alphanum-sorted
+// so "img2" precedes "img10".
+bool listDir(
+    const std::string& path_in,
+    std::vector<std::string>& output,
+    uint32_t mask
+) {
 	std::string path = path_in;
 
 	if (path.size() == 0)
@@ -177,6 +300,11 @@ bool listDir(const std::string& path_in, std::vector<std::string>& output, uint3
 			const char firstChar = path[0];
 
 			// if nothing was found and a full path wasn't specified, try the exe path
+			//
+			// Skip the retry for paths that already look "rooted":
+			// relative-to-cwd (`.`), absolute (`/`, `\`), glob-anchored
+			// (`*`, `?`), or home-relative (`~`). Anything else gets
+			// one fallback shot at exe-dir/path.
 			if (firstChar != '.' && firstChar != '/' && firstChar != '\\' && firstChar != '*' &&
 			    firstChar != '?' && firstChar != '~')
 				return listDir(pathJoin(Process::GetExecutableDir(), path), output, mask);
@@ -199,6 +327,10 @@ bool listDir(const std::string& path_in, std::vector<std::string>& output, uint3
 	globfree(&globList);
 
 	// sort list alphanumerically (glob actually already does this)
+	//
+	// glob() sorts lexically, which puts "img10" before "img2". The
+	// alphanum_less comparator from alphanum.h sorts numeric runs
+	// numerically, giving the human-expected order.
 	std::sort(output.begin(), output.end(), doj::alphanum_less<std::string>());
 
 	if (output.size() == 0) {
@@ -209,8 +341,19 @@ bool listDir(const std::string& path_in, std::vector<std::string>& output, uint3
 	return true;
 }
 
+
+//-----------------------------------------------------------------------------------
+// stat(2) wrappers
+//-----------------------------------------------------------------------------------
+
 // fileType
-uint32_t fileType(const std::string& path) {
+//
+// Single stat(2) call; map st_mode to one of the fileTypes bits. Returns
+// FILE_MISSING (== 0) for both "stat failed" and "stat succeeded but
+// returned an unrecognized mode" -- the latter is unreachable on Linux.
+uint32_t fileType(
+    const std::string& path
+) {
 	if (path.size() == 0)
 		return FILE_MISSING;
 
@@ -241,7 +384,18 @@ uint32_t fileType(const std::string& path) {
 }
 
 // fileIsType
-bool fileIsType(const std::string& path, uint32_t mask) {
+//
+// NOTE: the `(type & mask) != type` check is a SUBSET test --
+// "the file's type bit must be contained in mask". This is unusual;
+// the more common idiom would be intersection ((type & mask) != 0).
+// It works out correctly here only because fileType always returns
+// a single bit. If fileType were ever extended to return multiple
+// bits (e.g. FILE_LINK | FILE_REGULAR for a symlink-to-file) the
+// semantics would silently change.
+bool fileIsType(
+    const std::string& path,
+    uint32_t mask
+) {
 	if (path.size() == 0)
 		return false;
 
@@ -260,12 +414,25 @@ bool fileIsType(const std::string& path, uint32_t mask) {
 }
 
 // fileExists
-bool fileExists(const std::string& path, uint32_t mask) {
+//
+// Pure alias for fileIsType -- "exists" is "is some type, with the
+// optional mask filter applied". Kept as a separate name for caller
+// readability at use sites like `if (fileExists(modelPath))`.
+bool fileExists(
+    const std::string& path,
+    uint32_t mask
+) {
 	return fileIsType(path, mask);
 }
 
 // fileSize
-size_t fileSize(const std::string& path) {
+//
+// Returns st_size on success, 0 on failure. A genuinely empty file also
+// returns 0, so callers needing to distinguish must call fileExists
+// (or fileType) first.
+size_t fileSize(
+    const std::string& path
+) {
 	if (path.size() == 0)
 		return 0;
 
@@ -282,8 +449,23 @@ size_t fileSize(const std::string& path) {
 	return fileStat.st_size;
 }
 
+
+//-----------------------------------------------------------------------------------
+// Path manipulation (pure string ops -- no I/O)
+//-----------------------------------------------------------------------------------
+
 // splitPath
-std::pair<std::string, std::string> splitPath(const std::string& path) {
+//
+// NOTE: surprising semantics for paths with no slash --
+//   splitPath("foo")     -> ("foo", "")    // treated as directory
+//   splitPath("foo.txt") -> ("", "foo.txt") // treated as filename
+// The decision hinges on whether fileExtension() returns non-empty.
+// If you can't guarantee the input shape, prefer using pathDir +
+// pathFilename, which have independent definitions and no such
+// interaction.
+std::pair<std::string, std::string> splitPath(
+    const std::string& path
+) {
 	const std::string::size_type slashIdx = path.find_last_of("/");
 	const std::string ext = fileExtension(path);
 
@@ -301,7 +483,12 @@ std::pair<std::string, std::string> splitPath(const std::string& path) {
 }
 
 // pathFilename
-std::string pathFilename(const std::string& path) {
+//
+// Basename. No slash -> the whole input is the filename. Trailing
+// slash -> empty string (the part after the last `/` is "").
+std::string pathFilename(
+    const std::string& path
+) {
 	const std::string::size_type slashIdx = path.find_last_of("/");
 
 	if (slashIdx == std::string::npos)
@@ -311,7 +498,17 @@ std::string pathFilename(const std::string& path) {
 }
 
 // pathDir
-std::string pathDir(const std::string& path) {
+//
+// NOTE: returns the INPUT unchanged in two edge cases --
+//   - no slash at all   (e.g. "foo"  -> "foo")
+//   - only slash at idx 0 (e.g. "/foo" -> "/foo", not "/")
+// Both are arguably bugs (the docstring promises "parent directory")
+// but downstream code may depend on the no-slash case as a "if there's
+// no directory, the path IS the directory" tell. Don't fix without
+// auditing callers.
+std::string pathDir(
+    const std::string& path
+) {
 	const std::string::size_type slashIdx = path.find_last_of("/");
 
 	if (slashIdx == std::string::npos || slashIdx == 0)
@@ -321,7 +518,15 @@ std::string pathDir(const std::string& path) {
 }
 
 // pathJoin
-std::string pathJoin(const std::string& a, const std::string& b) {
+//
+// Empty operands short-circuit. Otherwise, reuse a trailing `/` or `\`
+// on `a` as the separator (preserves Windows-style separators in
+// transit); otherwise insert a `/`. No normalization of duplicate
+// slashes or `..` -- this is concatenation, not canonicalization.
+std::string pathJoin(
+    const std::string& a,
+    const std::string& b
+) {
 	if (a.size() == 0)
 		return b;
 
@@ -337,8 +542,25 @@ std::string pathJoin(const std::string& a, const std::string& b) {
 	return a + "/" + b;
 }
 
+
+//-----------------------------------------------------------------------------------
+// Extension manipulation (pure string ops, lowercased on read)
+//-----------------------------------------------------------------------------------
+
 // fileExtension
-std::string fileExtension(const std::string& path) {
+//
+// NOTE: `tolower` here is the unqualified C function `int(int)`. For
+// bytes that sign-extend to negative `int` (non-ASCII in UTF-8) this
+// is undefined behaviour. Safe in practice because extensions are
+// ASCII, but worth knowing if you ever feed this Unicode paths.
+//
+// No leading `.` in the returned string: "foo.JPG" -> "jpg". A path
+// with a `.` only in a directory segment (e.g. "foo.bar/baz") will
+// confuse this -- find_last_of('.') returns the dir-segment dot. Use
+// fileRemoveExtension's guard if you care.
+std::string fileExtension(
+    const std::string& path
+) {
 	const std::string::size_type dotIdx = path.find_last_of(".");
 
 	if (dotIdx == std::string::npos)
@@ -349,15 +571,29 @@ std::string fileExtension(const std::string& path) {
 	return ext;
 }
 
-// fileHasExtension
-bool fileHasExtension(const std::string& path, const std::string& extension) {
+// fileHasExtension (single string)
+//
+// Thin wrapper -- promote the single extension to a one-element
+// vector and forward to the vector overload below for the actual
+// case-insensitive match.
+bool fileHasExtension(
+    const std::string& path,
+    const std::string& extension
+) {
 	std::vector<std::string> extensions;
 	extensions.push_back(extension);
 	return fileHasExtension(path, extensions);
 }
 
-// fileHasExtension
-bool fileHasExtension(const std::string& path, const char** extensions) {
+// fileHasExtension (NULL-terminated C array)
+//
+// Builds a vector by walking until the NULL sentinel, then defers
+// to the vector overload. Callers MUST include the NULL terminator
+// -- without it the loop reads past the end.
+bool fileHasExtension(
+    const std::string& path,
+    const char** extensions
+) {
 	if (!extensions)
 		return false;
 
@@ -375,8 +611,15 @@ bool fileHasExtension(const std::string& path, const char** extensions) {
 	return fileHasExtension(path, extList);
 }
 
-// fileHasExtension
-bool fileHasExtension(const std::string& path, const std::vector<std::string>& extensions) {
+// fileHasExtension (vector)
+//
+// The real implementation. Case-insensitive comparison via strcasecmp,
+// skipping any empty strings in the candidate list. Returns false if
+// the path has no extension, or if the candidate list is empty.
+bool fileHasExtension(
+    const std::string& path,
+    const std::vector<std::string>& extensions
+) {
 	const std::string pathExtension = fileExtension(path);
 	const size_t numExtensions = extensions.size();
 
@@ -398,7 +641,14 @@ bool fileHasExtension(const std::string& path, const std::vector<std::string>& e
 }
 
 // fileRemoveExtension
-std::string fileRemoveExtension(const std::string& filename) {
+//
+// Guarded against the "dot in directory segment" case: if the last
+// `.` precedes the last `/`, the path has no real extension and is
+// returned unchanged. So fileRemoveExtension("foo.bar/baz") -> "foo.bar/baz",
+// not "foo.bar/baz" stripped to "foo".
+std::string fileRemoveExtension(
+    const std::string& filename
+) {
 	const std::string::size_type dotIdx = filename.find_last_of(".");
 	const std::string::size_type slashIdx = filename.find_last_of("/");
 
@@ -412,6 +662,15 @@ std::string fileRemoveExtension(const std::string& filename) {
 }
 
 // fileChangeExtension
-std::string fileChangeExtension(const std::string& filename, const std::string& newExtension) {
+//
+// NOTE: concatenation only -- the `.` is NOT inserted. Caller must
+// include the leading dot in `newExtension`:
+//   fileChangeExtension("a.xml", ".zip")  -> "a.zip"
+//   fileChangeExtension("a.xml",  "zip")  -> "azip"
+// Surprising but documented behaviour; matching upstream.
+std::string fileChangeExtension(
+    const std::string& filename,
+    const std::string& newExtension
+) {
 	return fileRemoveExtension(filename).append(newExtension);
 }
