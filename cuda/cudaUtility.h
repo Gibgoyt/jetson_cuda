@@ -69,7 +69,7 @@
  *		  current call sites but it can bite next to a dangling `else`. 
 */
 
-#if !defined(__CUDA_UTILITY_H_) || 1
+#if !defined(__CUDA_UTILITY_H_)
 	#define __CUDA_UTILITY_H_
 
 	#include <cuda_runtime.h>
